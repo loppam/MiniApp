@@ -717,7 +717,8 @@ const ashoatsPhantomSolanaWallet =
   'Ao3gLNZAsbrmnusWVqQCPMrcqNi6jdYgu8T6NCoXXQu1';
 
 const solanaConnection = new SolanaConnection(
-  'https://api.mainnet-beta.solana.com',
+  // This is a free RPC without credit card linked, steal at your own will
+  'https://mainnet.helius-rpc.com/?api-key=63185c9d-1a75-492a-ba9c-2dbac8e9434d',
   'confirmed',
 );
 
