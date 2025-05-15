@@ -737,6 +737,29 @@ function SendTokenSolana() {
   const [selectedSymbol, setSelectedSymbol] = useState(''); // Initialize with empty string
   const [associatedMapping, setAssociatedMapping] = useState<{token: string, decimals: number} | undefined>(undefined);
 
+  const [destinationAddress, setDestinationAddress] = useState('');
+  const [simulation, setSimulation] = useState('');
+
+  const setCurrentAddress = useCallback(async () => {
+    const solanaProvider = await getSolanaProvider();
+    if (!solanaProvider) {
+      throw new Error('No Solana provider found. Make sure your wallet is connected and configured.');
+    }
+
+    // The connect method is often called when the app loads or when the user explicitly connects their wallet.
+      // It might not be needed right before every transaction if the wallet is already connected.
+      // However, calling it here ensures we have the public key.
+      const connectResult = await solanaProvider.request({
+        method: 'connect',
+        // params: [{ onlyIfTrusted: true }] // Optional: attempt to connect without a popup if already trusted
+      });
+      setDestinationAddress(connectResult?.publicKey);
+  }, [])
+
+  useEffect(() => {
+    setCurrentAddress();
+  }, [setCurrentAddress])
+
   const tokenOptions = [
     { label: 'Select a token', value: '', disabled: true }, // Added a disabled default option
     { label: 'USDC', value: 'USDC' },
@@ -760,7 +783,7 @@ function SendTokenSolana() {
         break;
       case '$TRUMP':
         valueToSet = '6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN'; // $TRUMP Mint address (example)
-        decimalsToSet = 9;
+        decimalsToSet = 6;
         break;
       default:
         // It's better to handle this case gracefully, e.g., by clearing the mapping
@@ -804,13 +827,6 @@ function SendTokenSolana() {
       if (!connectResult || typeof connectResult !== 'object' || !('publicKey' in connectResult) || !connectResult.publicKey) {
         throw new Error('Failed to connect to Solana wallet or fetch public key.');
       }
-      const danAddress = "H7ECzBunMg2WTEjmXpzm4DCQju1h6hD9siEcoMGYFa8n"
-
-
-      if (!danAddress) {
-        throw new Error('Failed to fetch your Solana address from the wallet.');
-      }
-
       const { blockhash } = await solanaConnection.getLatestBlockhash();
       if (!blockhash) {
         throw new Error('Failed to fetch the latest Solana blockhash.');
@@ -819,7 +835,7 @@ function SendTokenSolana() {
       const transaction = new SolanaTransaction();
 
       const tokenMintPublicKey = new SolanaPublicKey(associatedMapping.token);
-      const recipientPublicKey = new SolanaPublicKey(danAddress);
+      const recipientPublicKey = new SolanaPublicKey(destinationAddress);
 
       // Calculate the amount in the smallest unit of the token
       // Sending 0.1 of the token
@@ -886,11 +902,11 @@ function SendTokenSolana() {
 
       console.log('Simulating transaction:', transaction);
       const simulation = await solanaConnection.simulateTransaction(transaction);
-      if (simulation.value.err) {
-        console.error('Simulation error details:', simulation.value.logs);
-        throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
-      }
-      console.log('Simulation successful:', simulation);
+      // if (simulation.value.err) {
+      //   console.error('Simulation error details:', simulation.value.logs);
+      //   throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
+      // }
+      setSimulation(JSON.stringify(simulation.value));
 
       // The provider's signAndSendTransaction method might take the transaction directly
       // or might require it to be serialized. Check your provider's documentation.
@@ -914,11 +930,24 @@ function SendTokenSolana() {
       // Removed `throw e;` as it might cause unhandled promise rejection if not caught upstream.
       // The state update is usually sufficient for UI feedback.
     }
-  }, [getSolanaProvider, selectedSymbol, associatedMapping, solanaConnection]); // Added solanaConnection
+  }, [getSolanaProvider, selectedSymbol, associatedMapping, solanaConnection, destinationAddress]); // Added solanaConnection
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4"> {/* Added some basic styling for layout */}
       <h2 className="text-xl font-semibold">Send Solana Transaction</h2>
+
+      <div>
+        <label htmlFor="destination-address" className="block text-sm font-medium text-gray-700 mb-1">
+          Destination Address
+        </label>
+        <input
+          type="text"
+          id="destination-address"
+          value={destinationAddress}
+          onChange={(e) => setDestinationAddress(e.target.value)}
+          className="w-full" // Ensure input takes full width of its container
+        />
+      </div>
 
       <div>
         <label htmlFor="token-select" className="block text-sm font-medium text-gray-700 mb-1">
@@ -954,6 +983,12 @@ function SendTokenSolana() {
         <div className="mt-2 text-xs p-2 bg-green-50 border border-green-200 rounded">
           <div className="font-semibold text-green-700">Transaction Successful!</div>
           <div>Signature: <a href={`https://explorer.solana.com/tx/${state.signature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{truncateAddress(state.signature)}</a></div>
+        </div>
+      )}
+      {simulation && (
+        <div className="mt-2 text-xs p-2 bg-green-50 border border-green-200 rounded">
+          <div className="font-semibold text-green-700">Simulation Result:</div>
+          <div>{simulation}</div>
         </div>
       )}
     </div>
