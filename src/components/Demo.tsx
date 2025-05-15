@@ -527,7 +527,7 @@ export default function Demo(
           )}
         </div>
 
-        {/* {solanaAddress && ( */}
+        {solanaAddress && (
           <div>
             <h2 className="font-2xl font-bold">Solana</h2>
             <div className="my-2 text-xs">
@@ -543,7 +543,7 @@ export default function Demo(
               <SendTokenSolana />
             </div>
           </div>
-        {/* )} */}
+        )}
       </div>
     </div>
   );
