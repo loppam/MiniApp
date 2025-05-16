@@ -763,7 +763,9 @@ function SendTokenSolana() {
   const tokenOptions = [
     { label: 'Select a token', value: '', disabled: true }, // Added a disabled default option
     { label: 'USDC', value: 'USDC' },
-    { label: '$TRUMP', value: '$TRUMP' },
+    { label: 'Tether', value: 'Tether' },
+    { label: 'Bonk', value: 'Bonk' },
+    { label: 'GOGS', value: 'GOGS' },
   ];
 
   const handleValueChange = (value: string) => {
@@ -781,8 +783,16 @@ function SendTokenSolana() {
         valueToSet = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC Mint address
         decimalsToSet = 6;
         break;
-      case '$TRUMP':
-        valueToSet = '6p6xgHyF7AeE6TZkSmFsko444wqoP15icUSqi2jfGiPN'; // $TRUMP Mint address (example)
+      case 'Tether':
+        valueToSet = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
+        decimalsToSet = 6;
+        break;
+      case 'Bonk':
+        valueToSet = 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263'
+        decimalsToSet = 5;
+        break;
+      case 'GOGS':
+        valueToSet = 'HxptKywiNbHobJD4XMMBn1czMUGkdMrUkeUErQLKbonk'
         decimalsToSet = 6;
         break;
       default:
