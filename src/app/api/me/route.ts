@@ -10,26 +10,23 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  console.log(authorization.split(' ')[1]);
-  const res = await fetch('https://auth.farcaster.xyz/verify-token', {
-    method: 'POST',
-    body: Json.stringify({
-      token: authorization.split(' ')[1],
-      domain: (new URL(process.env.NEXT_PUBLIC_URL ?? '')).hostname,
-    }),
-  })
+  const url = new URL('https://auth.farcaster.xyz/verify-jwt')
+  url.searchParams.set('token', authorization.split(' ')[1])
+  url.searchParams.set('domain', (new URL(process.env.NEXT_PUBLIC_URL ?? '')).hostname)
 
-  if (!res.ok) {
-    throw new Error("Request to verify token failed: " + Json.stringify(await res.json()));
+  const res = await fetch(url.toString())
+
+  if (res.status === 400) {
+    return Response.json(
+      { message: "Invalid token" },
+      { status: 401 }
+    );
   }
 
-  const resBody = await res.json()
-  if (resBody.valid) {
-    return Response.json({ fid: Number(resBody.payload.sub) });
+  if (res.status === 200) {
+    const resBody = await res.json()
+    return Response.json({ fid: Number(resBody.sub) });
   }
 
-  return Response.json(
-    { message: "Invalid token" },
-    { status: 401 }
-  );
+  throw new Error("Unknown error")
 }
