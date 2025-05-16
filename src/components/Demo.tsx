@@ -1,6 +1,7 @@
 "use client";
 
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferCheckedInstruction } from "@solana/spl-token";
+import { jwtDecode } from "jwt-decode";
 import {
   Connection as SolanaConnection,
   PublicKey as SolanaPublicKey,
@@ -9,7 +10,6 @@ import {
 } from "@solana/web3.js";
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { Input } from "../components/ui/input";
-import { signIn, signOut, getCsrfToken } from "next-auth/react";
 import sdk, {
   AddMiniApp,
   ComposeCast,
@@ -32,9 +32,8 @@ import {
 import { config } from "~/components/providers/WagmiProvider";
 import { Button } from "~/components/ui/Button";
 import { truncateAddress } from "~/lib/truncateAddress";
-import { base, degen, mainnet, optimism, unichain } from "wagmi/chains";
+import { base, degen, mainnet, monadTestnet, optimism, unichain } from "wagmi/chains";
 import { BaseError, UserRejectedRequestError } from "viem";
-import { useSession } from "next-auth/react";
 import { createStore } from "mipd";
 import { Label } from "~/components/ui/label";
 
@@ -43,6 +42,7 @@ export default function Demo(
 ) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<Context.FrameContext>();
+  const [token, setToken] = useState<string | null>(null);
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -251,6 +251,7 @@ export default function Demo(
         // call yoink() on Yoink contract
         to: "0x4bBFD120d9f352A0BEd7a014bd67913a2007a878",
         data: "0x9846cd9efc000023c0",
+        chainId: monadTestnet.id,
       },
       {
         onSuccess: (hash) => {
@@ -319,9 +320,8 @@ export default function Demo(
             className="flex items-center gap-2 transition-colors"
           >
             <span
-              className={`transform transition-transform ${
-                isContextOpen ? "rotate-90" : ""
-              }`}
+              className={`transform transition-transform ${isContextOpen ? "rotate-90" : ""
+                }`}
             >
               ➤
             </span>
@@ -346,7 +346,7 @@ export default function Demo(
                 sdk.actions.signIn
               </pre>
             </div>
-            <SignIn />
+            <SignIn setToken={setToken} token={token} />
           </div>
 
           <div className="mb-4">
@@ -497,8 +497,8 @@ export default function Demo(
                       {isConfirming
                         ? "Confirming..."
                         : isConfirmed
-                        ? "Confirmed!"
-                        : "Pending"}
+                          ? "Confirmed!"
+                          : "Pending"}
                     </div>
                   </div>
                 )}
@@ -662,8 +662,8 @@ function SendEth() {
             {isConfirming
               ? "Confirming..."
               : isConfirmed
-              ? "Confirmed!"
-              : "Pending"}
+                ? "Confirmed!"
+                : "Pending"}
           </div>
         </div>
       )}
@@ -695,7 +695,8 @@ function SignSolanaMessage() {
     } finally {
       setSignPending(false);
     }
-  }, []);
+  }, [getSolanaProvider]);
+
 
   return (
     <>
@@ -735,7 +736,7 @@ function SendTokenSolana() {
   >({ status: 'none' });
 
   const [selectedSymbol, setSelectedSymbol] = useState(''); // Initialize with empty string
-  const [associatedMapping, setAssociatedMapping] = useState<{token: string, decimals: number} | undefined>(undefined);
+  const [associatedMapping, setAssociatedMapping] = useState<{ token: string, decimals: number } | undefined>(undefined);
 
   const [destinationAddress, setDestinationAddress] = useState('');
   const [simulation, setSimulation] = useState('');
@@ -747,13 +748,13 @@ function SendTokenSolana() {
     }
 
     // The connect method is often called when the app loads or when the user explicitly connects their wallet.
-      // It might not be needed right before every transaction if the wallet is already connected.
-      // However, calling it here ensures we have the public key.
-      const connectResult = await solanaProvider.request({
-        method: 'connect',
-        // params: [{ onlyIfTrusted: true }] // Optional: attempt to connect without a popup if already trusted
-      });
-      setDestinationAddress(connectResult?.publicKey);
+    // It might not be needed right before every transaction if the wallet is already connected.
+    // However, calling it here ensures we have the public key.
+    const connectResult = await solanaProvider.request({
+      method: 'connect',
+      // params: [{ onlyIfTrusted: true }] // Optional: attempt to connect without a popup if already trusted
+    });
+    setDestinationAddress(connectResult?.publicKey);
   }, [])
 
   useEffect(() => {
@@ -940,7 +941,7 @@ function SendTokenSolana() {
       // Removed `throw e;` as it might cause unhandled promise rejection if not caught upstream.
       // The state update is usually sufficient for UI feedback.
     }
-  }, [getSolanaProvider, selectedSymbol, associatedMapping, solanaConnection, destinationAddress]); // Added solanaConnection
+  }, [getSolanaProvider, selectedSymbol, associatedMapping, destinationAddress]); // Added solanaConnection
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4"> {/* Added some basic styling for layout */}
@@ -1085,17 +1086,22 @@ function SendSolana() {
   );
 }
 
-function SignIn() {
+function SignIn({ setToken, token }: { setToken: (token: string | null) => void; token: string | null; }) {
   const [signingIn, setSigningIn] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const [signInResult, setSignInResult] = useState<SignInCore.SignInResult>();
   const [signInFailure, setSignInFailure] = useState<string>();
-  const { data: session, status } = useSession();
 
   const getNonce = useCallback(async () => {
-    const nonce = await getCsrfToken();
-    if (!nonce) throw new Error("Unable to generate nonce");
-    return nonce;
+    const res = await fetch("https://auth.farcaster.xyz/nonce", {
+      method: 'POST',
+    })
+
+    if (res.ok) {
+      const { nonce } = await res.json();
+      return nonce;
+    }
+
+    throw new Error("Unable to generate nonce");
   }, []);
 
   const handleSignIn = useCallback(async () => {
@@ -1103,14 +1109,44 @@ function SignIn() {
       setSigningIn(true);
       setSignInFailure(undefined);
       const nonce = await getNonce();
-      const result = await sdk.actions.signIn({ nonce });
+      const result = await sdk.actions.signIn({
+        nonce,
+        acceptAuthAddress: true
+      });
+
       setSignInResult(result);
 
-      await signIn("credentials", {
-        message: result.message,
-        signature: result.signature,
-        redirect: false,
-      });
+      const res = await fetch("https://auth.farcaster.xyz/verify-siwf", {
+        method: 'POST',
+        body: JSON.stringify({
+          domain: (new URL(process.env.NEXT_PUBLIC_URL ?? '')).hostname,
+          message: result.message,
+          signature: result.signature,
+        })
+      })
+
+      if (res.ok) {
+        const { valid, token } = await res.json();
+
+        if (valid) {
+          setToken(token);
+
+          // Demonstrate hitting an authed endpoint
+          const response = await fetch('/api/me', {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+
+          return;
+        }
+      }
+
+      throw new Error("Request to verify SIWF message failed");
     } catch (e) {
       if (e instanceof SignInCore.RejectedByUser) {
         setSignInFailure("Rejected by user");
@@ -1121,17 +1157,11 @@ function SignIn() {
     } finally {
       setSigningIn(false);
     }
-  }, [getNonce]);
+  }, [getNonce, setToken]);
 
   const handleSignOut = useCallback(async () => {
-    try {
-      setSigningOut(true);
-      await signOut({ redirect: false });
-      setSignInResult(undefined);
-    } finally {
-      setSigningOut(false);
-    }
-  }, []);
+    setToken(null)
+  }, [setToken]);
 
   return (
     <>
@@ -1141,15 +1171,15 @@ function SignIn() {
         </Button>
       )}
       {status === "authenticated" && (
-        <Button onClick={handleSignOut} disabled={signingOut}>
+        <Button onClick={handleSignOut}>
           Sign out
         </Button>
       )}
-      {session && (
+      {token && (
         <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
-          <div className="font-semibold text-gray-500 mb-1">Session</div>
+          <div className="font-semibold text-gray-500 mb-1">Session token</div>
           <div className="whitespace-pre">
-            {JSON.stringify(session, null, 2)}
+            {JSON.stringify(jwtDecode(token), undefined, 2)}
           </div>
         </div>
       )}
