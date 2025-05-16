@@ -1,6 +1,7 @@
 "use client";
 
 import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferCheckedInstruction } from "@solana/spl-token";
+import { jwtDecode } from "jwt-decode";
 import {
   Connection as SolanaConnection,
   PublicKey as SolanaPublicKey,
@@ -9,7 +10,6 @@ import {
 } from "@solana/web3.js";
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { Input } from "../components/ui/input";
-import { signOut } from "next-auth/react";
 import sdk, {
   AddMiniApp,
   ComposeCast,
@@ -34,7 +34,6 @@ import { Button } from "~/components/ui/Button";
 import { truncateAddress } from "~/lib/truncateAddress";
 import { base, degen, mainnet, monadTestnet, optimism, unichain } from "wagmi/chains";
 import { BaseError, UserRejectedRequestError } from "viem";
-import { useSession } from "next-auth/react";
 import { createStore } from "mipd";
 import { Label } from "~/components/ui/label";
 
@@ -43,7 +42,7 @@ export default function Demo(
 ) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [context, setContext] = useState<Context.FrameContext>();
-  const [_authJwt, setAuthJwt] = useState<string>();
+  const [token, setToken] = useState<string | null>(null);
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
@@ -347,7 +346,7 @@ export default function Demo(
                 sdk.actions.signIn
               </pre>
             </div>
-            <SignIn setJwt={setAuthJwt} />
+            <SignIn setToken={setToken} token={token} />
           </div>
 
           <div className="mb-4">
@@ -942,7 +941,7 @@ function SendTokenSolana() {
       // Removed `throw e;` as it might cause unhandled promise rejection if not caught upstream.
       // The state update is usually sufficient for UI feedback.
     }
-  }, [getSolanaProvider, selectedSymbol, associatedMapping, solanaConnection, destinationAddress]); // Added solanaConnection
+  }, [getSolanaProvider, selectedSymbol, associatedMapping, destinationAddress]); // Added solanaConnection
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4"> {/* Added some basic styling for layout */}
@@ -1087,12 +1086,10 @@ function SendSolana() {
   );
 }
 
-function SignIn({ setJwt }: { setJwt: (token: string) => void; }) {
+function SignIn({ setToken, token }: { setToken: (token: string | null) => void; token: string | null; }) {
   const [signingIn, setSigningIn] = useState(false);
-  const [signingOut, setSigningOut] = useState(false);
   const [signInResult, setSignInResult] = useState<SignInCore.SignInResult>();
   const [signInFailure, setSignInFailure] = useState<string>();
-  const { data: session, status } = useSession();
 
   const getNonce = useCallback(async () => {
     const res = await fetch("https://auth.farcaster.xyz/nonce", {
@@ -1132,8 +1129,9 @@ function SignIn({ setJwt }: { setJwt: (token: string) => void; }) {
         const { valid, token } = await res.json();
 
         if (valid) {
-          setJwt(token);
+          setToken(token);
 
+          // Demonstrate hitting an authed endpoint
           const response = await fetch('/api/me', {
             headers: {
               Authorization: `Bearer ${token}`
@@ -1144,7 +1142,6 @@ function SignIn({ setJwt }: { setJwt: (token: string) => void; }) {
             throw new Error('Network response was not ok');
           }
 
-          console.log(await response.json())
           return;
         }
       }
@@ -1160,17 +1157,11 @@ function SignIn({ setJwt }: { setJwt: (token: string) => void; }) {
     } finally {
       setSigningIn(false);
     }
-  }, [getNonce, setJwt]);
+  }, [getNonce, setToken]);
 
   const handleSignOut = useCallback(async () => {
-    try {
-      setSigningOut(true);
-      await signOut({ redirect: false });
-      setSignInResult(undefined);
-    } finally {
-      setSigningOut(false);
-    }
-  }, []);
+    setToken(null)
+  }, [setToken]);
 
   return (
     <>
@@ -1180,15 +1171,15 @@ function SignIn({ setJwt }: { setJwt: (token: string) => void; }) {
         </Button>
       )}
       {status === "authenticated" && (
-        <Button onClick={handleSignOut} disabled={signingOut}>
+        <Button onClick={handleSignOut}>
           Sign out
         </Button>
       )}
-      {session && (
+      {token && (
         <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
-          <div className="font-semibold text-gray-500 mb-1">Session</div>
+          <div className="font-semibold text-gray-500 mb-1">Session token</div>
           <div className="whitespace-pre">
-            {JSON.stringify(session, null, 2)}
+            {JSON.stringify(jwtDecode(token), undefined, 2)}
           </div>
         </div>
       )}
