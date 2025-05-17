@@ -7,6 +7,8 @@ import {
   PublicKey as SolanaPublicKey,
   SystemProgram as SolanaSystemProgram,
   Transaction as SolanaTransaction,
+  VersionedTransaction,
+  TransactionMessage,
 } from "@solana/web3.js";
 import { useEffect, useCallback, useState, useMemo } from "react";
 import { Input } from "../components/ui/input";
@@ -740,6 +742,7 @@ function SendTokenSolana() {
 
   const [destinationAddress, setDestinationAddress] = useState('');
   const [simulation, setSimulation] = useState('');
+  const [useVersionedTransaction, setUseVersionedTransaction] = useState(false);
 
   const setCurrentAddress = useCallback(async () => {
     const solanaProvider = await getSolanaProvider();
@@ -876,12 +879,27 @@ function SendTokenSolana() {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = new SolanaPublicKey(warpletPublicKey);
 
-      console.log('Simulating approval transaction:', transaction);
-      const simulation = await solanaConnection.simulateTransaction(transaction);
+      let finalTransaction: SolanaTransaction | VersionedTransaction = transaction;
+
+      if (useVersionedTransaction) {
+        // Create a v0 compatible message
+        const messageV0 = new TransactionMessage({
+          payerKey: warpletPublicKey,
+          recentBlockhash: blockhash,
+          instructions: transaction.instructions,
+        }).compileToV0Message();
+
+        // Create a new VersionedTransaction
+        finalTransaction = new VersionedTransaction(messageV0);
+        console.log('Created versioned transaction for approval');
+      }
+
+      console.log('Simulating approval transaction:', finalTransaction);
+      const simulation = await solanaConnection.simulateTransaction(finalTransaction);
       setSimulation(JSON.stringify(simulation.value));
 
       const { signature } = await solanaProvider.signAndSendTransaction({
-        transaction,
+        transaction: finalTransaction,
       });
       setState({ status: 'success', signature, type: 'approve' });
       console.log('Approval transaction successful, signature:', signature);
@@ -894,7 +912,7 @@ function SendTokenSolana() {
         setState({ status: 'error', error: new Error(String(e)) });
       }
     }
-  }, [getSolanaProvider, selectedSymbol, associatedMapping, destinationAddress])
+  }, [getSolanaProvider, selectedSymbol, associatedMapping, destinationAddress, useVersionedTransaction])
 
 
   const handleSend = useCallback(async () => {
@@ -996,8 +1014,23 @@ function SendTokenSolana() {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = new SolanaPublicKey(warpletPublicKey);
 
-      console.log('Simulating transaction:', transaction);
-      const simulation = await solanaConnection.simulateTransaction(transaction);
+      let finalTransaction: SolanaTransaction | VersionedTransaction = transaction;
+
+      if (useVersionedTransaction) {
+        // Create a v0 compatible message
+        const messageV0 = new TransactionMessage({
+          payerKey: warpletPublicKey,
+          recentBlockhash: blockhash,
+          instructions: transaction.instructions,
+        }).compileToV0Message();
+
+        // Create a new VersionedTransaction
+        finalTransaction = new VersionedTransaction(messageV0);
+        console.log('Created versioned transaction');
+      }
+
+      console.log('Simulating transaction:', finalTransaction);
+      const simulation = await solanaConnection.simulateTransaction(finalTransaction);
       // if (simulation.value.err) {
       //   console.error('Simulation error details:', simulation.value.logs);
       //   throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
@@ -1008,7 +1041,7 @@ function SendTokenSolana() {
       // or might require it to be serialized. Check your provider's documentation.
       // For Phantom, typically you pass the Transaction object.
       const { signature } = await solanaProvider.signAndSendTransaction({
-        transaction, // Pass the SolanaTransaction object
+        transaction: finalTransaction, // Pass the SolanaTransaction or VersionedTransaction object
         // requestPayer: ourSolanaAddress, // some providers might need this
         // network: 'devnet', // some providers might need this
       });
@@ -1026,7 +1059,7 @@ function SendTokenSolana() {
       // Removed `throw e;` as it might cause unhandled promise rejection if not caught upstream.
       // The state update is usually sufficient for UI feedback.
     }
-  }, [getSolanaProvider, selectedSymbol, associatedMapping, destinationAddress]); // Added solanaConnection
+  }, [getSolanaProvider, selectedSymbol, associatedMapping, destinationAddress, useVersionedTransaction]); // Added solanaConnection
 
   return (
     <div className="p-4 max-w-md mx-auto space-y-4"> {/* Added some basic styling for layout */}
@@ -1043,6 +1076,19 @@ function SendTokenSolana() {
           onChange={(e) => setDestinationAddress(e.target.value)}
           className="w-full" // Ensure input takes full width of its container
         />
+      </div>
+
+      <div className="flex items-center gap-2">
+        <input
+          type="checkbox"
+          id="use-versioned"
+          checked={useVersionedTransaction}
+          onChange={(e) => setUseVersionedTransaction(e.target.checked)}
+          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+        />
+        <label htmlFor="use-versioned" className="text-sm font-medium text-gray-700">
+          Use Versioned Transaction
+        </label>
       </div>
 
       <div>
