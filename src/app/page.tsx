@@ -1,6 +1,5 @@
 import { Metadata } from "next";
 import App from "./app";
-import Head from "next/head";
 
 const appUrl = process.env.NEXT_PUBLIC_URL;
 
@@ -36,11 +35,6 @@ export async function generateMetadata(): Promise<Metadata> {
 
 export default function Home() {
   return (
-    <>
-      <Head>
-        <link rel="preconnect" href="https://auth.farcaster.xyz" />
-      </Head>
-      <App />
-    </>
+    <App />
   );
 }
