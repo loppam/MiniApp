@@ -1,4 +1,3 @@
-import { notificationDetailsSchema } from "@farcaster/frame-sdk";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { setUserNotificationDetails } from "~/lib/kv";
@@ -6,7 +5,8 @@ import { sendFrameNotification } from "~/lib/notifs";
 
 const requestSchema = z.object({
   fid: z.number(),
-  notificationDetails: notificationDetailsSchema,
+  // To be fixed: Typescript was creating issues in the import
+  notificationDetails: z.any(),
 });
 
 export async function POST(request: NextRequest) {

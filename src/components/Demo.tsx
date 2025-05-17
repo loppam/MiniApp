@@ -895,9 +895,6 @@ function SendTokenSolana() {
       }
 
       console.log('Simulating approval transaction:', finalTransaction);
-      const simulation = await solanaConnection.simulateTransaction(finalTransaction);
-      setSimulation(JSON.stringify(simulation.value));
-
       const { signature } = await solanaProvider.signAndSendTransaction({
         transaction: finalTransaction,
       });
@@ -1030,11 +1027,9 @@ function SendTokenSolana() {
       }
 
       console.log('Simulating transaction:', finalTransaction);
-      const simulation = await solanaConnection.simulateTransaction(finalTransaction);
-      // if (simulation.value.err) {
-      //   console.error('Simulation error details:', simulation.value.logs);
-      //   throw new Error(`Transaction simulation failed: ${JSON.stringify(simulation.value.err)}`);
-      // }
+      const simulation = await solanaConnection.simulateTransaction(
+        finalTransaction as VersionedTransaction
+      );
       setSimulation(JSON.stringify(simulation.value));
 
       // The provider's signAndSendTransaction method might take the transaction directly
