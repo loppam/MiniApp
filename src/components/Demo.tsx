@@ -1,6 +1,6 @@
 "use client";
 
-import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferCheckedInstruction } from "@solana/spl-token";
+import { getAssociatedTokenAddress, createAssociatedTokenAccountInstruction, createTransferCheckedInstruction, createApproveInstruction } from "@solana/spl-token";
 import { jwtDecode } from "jwt-decode";
 import {
   Connection as SolanaConnection,
@@ -732,7 +732,7 @@ function SendTokenSolana() {
     | { status: 'none' }
     | { status: 'pending' }
     | { status: 'error'; error: Error }
-    | { status: 'success'; signature: string }
+    | { status: 'success'; signature: string; type: 'send' | 'approve' }
   >({ status: 'none' });
 
   const [selectedSymbol, setSelectedSymbol] = useState(''); // Initialize with empty string
@@ -811,6 +811,91 @@ function SendTokenSolana() {
 
 
   const { getSolanaProvider } = sdk.experimental;
+
+  const handleApprove = useCallback(async () => {
+    if (!selectedSymbol || !associatedMapping) {
+      setState({ status: 'error', error: new Error('Please select a token to approve.') });
+      return;
+    }
+
+    if (!destinationAddress) {
+      setState({ status: 'error', error: new Error('Please enter a destination address.') });
+      return;
+    }
+
+    setState({ status: 'pending' });
+    try {
+      const solanaProvider = await getSolanaProvider();
+      if (!solanaProvider) {
+        throw new Error('No Solana provider found. Make sure your wallet is connected and configured.');
+      }
+
+      const connectResult = await solanaProvider.request({
+        method: 'connect',
+      });
+
+      const warpletPublicKey = new SolanaPublicKey(connectResult?.publicKey);
+      if (!connectResult || typeof connectResult !== 'object' || !('publicKey' in connectResult) || !connectResult.publicKey) {
+        throw new Error('Failed to connect to Solana wallet or fetch public key.');
+      }
+
+      const { blockhash } = await solanaConnection.getLatestBlockhash();
+      if (!blockhash) {
+        throw new Error('Failed to fetch the latest Solana blockhash.');
+      }
+
+      const transaction = new SolanaTransaction();
+
+      const tokenMintPublicKey = new SolanaPublicKey(associatedMapping.token);
+      const spenderPublicKey = new SolanaPublicKey(destinationAddress);
+
+      // Calculate the amount to approve: 1000 tokens in smallest units
+      const amountToApprove = 1000;
+      const amountInSmallestUnit = BigInt(Math.round(amountToApprove * Math.pow(10, associatedMapping.decimals)));
+
+      if (amountInSmallestUnit <= 0) {
+        throw new Error("Calculated token amount to approve is zero or less. Check decimals and amount.");
+      }
+
+      // Get the owner's ATA for the token
+      const ownerAta = await getAssociatedTokenAddress(
+        tokenMintPublicKey,
+        warpletPublicKey
+      );
+
+      // Add the approve instruction
+      transaction.add(
+        createApproveInstruction(
+          ownerAta,             // Token account to approve from
+          spenderPublicKey,     // Account authorized to transfer tokens
+          warpletPublicKey,     // Owner of the token account
+          amountInSmallestUnit  // Amount to approve in smallest units
+        )
+      );
+
+      transaction.recentBlockhash = blockhash;
+      transaction.feePayer = new SolanaPublicKey(warpletPublicKey);
+
+      console.log('Simulating approval transaction:', transaction);
+      const simulation = await solanaConnection.simulateTransaction(transaction);
+      setSimulation(JSON.stringify(simulation.value));
+
+      const { signature } = await solanaProvider.signAndSendTransaction({
+        transaction,
+      });
+      setState({ status: 'success', signature, type: 'approve' });
+      console.log('Approval transaction successful, signature:', signature);
+
+    } catch (e) {
+      console.error("Approval transaction failed:", e);
+      if (e instanceof Error) {
+        setState({ status: 'error', error: e });
+      } else {
+        setState({ status: 'error', error: new Error(String(e)) });
+      }
+    }
+  }, [getSolanaProvider, selectedSymbol, associatedMapping, destinationAddress])
+
 
   const handleSend = useCallback(async () => {
     if (!selectedSymbol || !associatedMapping) {
@@ -927,7 +1012,7 @@ function SendTokenSolana() {
         // requestPayer: ourSolanaAddress, // some providers might need this
         // network: 'devnet', // some providers might need this
       });
-      setState({ status: 'success', signature });
+      setState({ status: 'success', signature, type: 'send' });
       console.log('Transaction successful, signature:', signature);
 
     } catch (e) {
@@ -977,14 +1062,25 @@ function SendTokenSolana() {
         </select>
       </div>
 
-      <Button
-        onClick={handleSend}
-        disabled={state.status === 'pending' || !selectedSymbol} // Disable if no token selected or pending
-        isLoading={state.status === 'pending'}
-        className="w-full" // Make button full width
-      >
-        Send Token {selectedSymbol ? `(0.1 ${selectedSymbol})` : ''}
-      </Button>
+      <div className="flex gap-2">
+        <Button
+          onClick={handleSend}
+          disabled={state.status === 'pending' || !selectedSymbol} // Disable if no token selected or pending
+          isLoading={state.status === 'pending'}
+          className="flex-1" // Make button share width equally
+        >
+          Send Token {selectedSymbol ? `(0.1 ${selectedSymbol})` : ''}
+        </Button>
+        
+        <Button
+          onClick={handleApprove}
+          disabled={state.status === 'pending' || !selectedSymbol} // Disable if no token selected or pending
+          isLoading={state.status === 'pending'}
+          className="flex-1" // Make button share width equally
+        >
+          Approve {selectedSymbol ? `(1000 ${selectedSymbol})` : ''}
+        </Button>
+      </div>
 
       {state.status === 'none' && !selectedSymbol && (
         <div className="mt-2 text-xs text-gray-500">Please select a token.</div>
@@ -992,7 +1088,9 @@ function SendTokenSolana() {
       {state.status === 'error' && renderError(state.error)}
       {state.status === 'success' && (
         <div className="mt-2 text-xs p-2 bg-green-50 border border-green-200 rounded">
-          <div className="font-semibold text-green-700">Transaction Successful!</div>
+          <div className="font-semibold text-green-700">
+            {state.type === 'approve' ? 'Approval' : 'Send'} Transaction Successful!
+          </div>
           <div>Signature: <a href={`https://explorer.solana.com/tx/${state.signature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{truncateAddress(state.signature)}</a></div>
         </div>
       )}
