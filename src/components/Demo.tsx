@@ -1261,6 +1261,7 @@ function SignIn({ setToken, token }: { setToken: (token: string | null) => void;
           domain: (new URL(process.env.NEXT_PUBLIC_URL ?? '')).hostname,
           message: result.message,
           signature: result.signature,
+          acceptAuthAddress: true
         })
       })
 
