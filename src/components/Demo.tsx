@@ -38,6 +38,9 @@ import { base, degen, mainnet, monadTestnet, optimism, unichain } from "wagmi/ch
 import { BaseError, UserRejectedRequestError } from "viem";
 import { createStore } from "mipd";
 import { Label } from "~/components/ui/label";
+import { createClient } from "@farcaster/quick-auth";
+
+const quickAuth = createClient();
 
 export default function Demo(
   { title }: { title?: string } = { title: "Frames v2 Demo" }
@@ -744,6 +747,8 @@ function SendTokenSolana() {
   const [simulation, setSimulation] = useState('');
   const [useVersionedTransaction, setUseVersionedTransaction] = useState(false);
 
+  const { getSolanaProvider } = sdk.experimental;
+
   const setCurrentAddress = useCallback(async () => {
     const solanaProvider = await getSolanaProvider();
     if (!solanaProvider) {
@@ -758,7 +763,7 @@ function SendTokenSolana() {
       // params: [{ onlyIfTrusted: true }] // Optional: attempt to connect without a popup if already trusted
     });
     setDestinationAddress(connectResult?.publicKey);
-  }, [])
+  }, [getSolanaProvider])
 
   useEffect(() => {
     setCurrentAddress();
@@ -812,8 +817,6 @@ function SendTokenSolana() {
     });
   };
 
-
-  const { getSolanaProvider } = sdk.experimental;
 
   const handleApprove = useCallback(async () => {
     if (!selectedSymbol || !associatedMapping) {
@@ -1112,7 +1115,7 @@ function SendTokenSolana() {
         >
           Send Token {selectedSymbol ? `(0.1 ${selectedSymbol})` : ''}
         </Button>
-        
+
         <Button
           onClick={handleApprove}
           disabled={state.status === 'pending' || !selectedSymbol} // Disable if no token selected or pending
@@ -1230,24 +1233,11 @@ function SignIn({ setToken, token }: { setToken: (token: string | null) => void;
   const [signInResult, setSignInResult] = useState<SignInCore.SignInResult>();
   const [signInFailure, setSignInFailure] = useState<string>();
 
-  const getNonce = useCallback(async () => {
-    const res = await fetch("https://auth.farcaster.xyz/nonce", {
-      method: 'POST',
-    })
-
-    if (res.ok) {
-      const { nonce } = await res.json();
-      return nonce;
-    }
-
-    throw new Error("Unable to generate nonce");
-  }, []);
-
   const handleSignIn = useCallback(async () => {
     try {
       setSigningIn(true);
       setSignInFailure(undefined);
-      const nonce = await getNonce();
+      const { nonce } = await quickAuth.generateNonce();
       const result = await sdk.actions.signIn({
         nonce,
         acceptAuthAddress: true
@@ -1255,38 +1245,26 @@ function SignIn({ setToken, token }: { setToken: (token: string | null) => void;
 
       setSignInResult(result);
 
-      const res = await fetch("https://auth.farcaster.xyz/verify-siwf", {
-        method: 'POST',
-        body: JSON.stringify({
-          domain: (new URL(process.env.NEXT_PUBLIC_URL ?? '')).hostname,
-          message: result.message,
-          signature: result.signature,
-          acceptAuthAddress: true
-        })
+      const { token } = await quickAuth.verifySiwf({
+        domain: (new URL(process.env.NEXT_PUBLIC_URL ?? '')).hostname,
+        message: result.message,
+        signature: result.signature,
       })
 
-      if (res.ok) {
-        const { valid, token } = await res.json();
+      setToken(token);
 
-        if (valid) {
-          setToken(token);
-
-          // Demonstrate hitting an authed endpoint
-          const response = await fetch('/api/me', {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          });
-
-          if (!response.ok) {
-            throw new Error('Network response was not ok');
-          }
-
-          return;
+      // Demonstrate hitting an authed endpoint
+      const response = await fetch('/api/me', {
+        headers: {
+          Authorization: `Bearer ${token}`
         }
+      });
+
+      if (!response.ok) {
+        throw new Error('Network response was not ok');
       }
 
-      throw new Error("Request to verify SIWF message failed");
+      return;
     } catch (e) {
       if (e instanceof SignInCore.RejectedByUser) {
         setSignInFailure("Rejected by user");
@@ -1297,7 +1275,7 @@ function SignIn({ setToken, token }: { setToken: (token: string | null) => void;
     } finally {
       setSigningIn(false);
     }
-  }, [getNonce, setToken]);
+  }, [setToken]);
 
   const handleSignOut = useCallback(async () => {
     setToken(null)
