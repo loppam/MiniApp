@@ -173,6 +173,14 @@
   resolved "https://registry.yarnpkg.com/@farcaster/frame-wagmi-connector/-/frame-wagmi-connector-0.0.34.tgz#ea0528bc664a94363ddc61be6b74152a37a0b686"
   integrity sha512-TQf/Al8O0AAsdR/4Oog2wUlH3WlMZgXJ2aoMbPg0mFbnQk9pVSUH7ON5MnDcYCQB6IZsBOSlZTed91Z0DxTc/w==
 
+"@farcaster/quick-auth@^0.0.2":
+  version "0.0.2"
+  resolved "https://registry.yarnpkg.com/@farcaster/quick-auth/-/quick-auth-0.0.2.tgz#dca4f032af3b5437994ace04bacbebf82c4837d2"
+  integrity sha512-u+lJTUOfJcmX1WjOLIj37xxH9DgVfBeG1I2RtDcSR6MnNAP3z8ggnH/IVxNO3ZhJoko7knSBY+tn6OKqjI+Slw==
+  dependencies:
+    jose "^5.2.3"
+    zod "^3.25.1"
+
 "@humanwhocodes/config-array@^0.13.0":
   version "0.13.0"
   resolved "https://registry.yarnpkg.com/@humanwhocodes/config-array/-/config-array-0.13.0.tgz#fb907624df3256d04b9aa2df50d7aa97ec648748"
@@ -3900,6 +3908,11 @@ jiti@^2.1.2:
   resolved "https://registry.yarnpkg.com/jiti/-/jiti-2.4.0.tgz#393d595fb6031a11d11171b5e4fc0b989ba3e053"
   integrity sha512-H5UpaUI+aHOqZXlYOaFP/8AzKsg+guWu+Pr3Y8i7+Y3zr1aXAvCvTAQ1RxSc6oVD8R8c7brgNtTVP91E7upH/g==
 
+jose@^5.2.3:
+  version "5.10.0"
+  resolved "https://registry.yarnpkg.com/jose/-/jose-5.10.0.tgz#c37346a099d6467c401351a9a0c2161e0f52c4be"
+  integrity sha512-s+3Al/p9g32Iq+oqXxkW//7jk2Vig6FF1CFqzVXoTUXt2qz89YWbL+OwS17NFYEvxC35n0FKeGO2LGYSxeM2Gg==
+
 "js-tokens@^3.0.0 || ^4.0.0":
   version "4.0.0"
   resolved "https://registry.yarnpkg.com/js-tokens/-/js-tokens-4.0.0.tgz#19203fb59991df98e3a287050d4647cdeaf32499"
@@ -6025,6 +6038,11 @@ zod@^3.24.1:
   version "3.24.1"
   resolved "https://registry.yarnpkg.com/zod/-/zod-3.24.1.tgz#27445c912738c8ad1e9de1bea0359fa44d9d35ee"
   integrity sha512-muH7gBL9sI1nciMZV67X5fTKKBLtwpZ5VBp1vsOQzj1MhrBZ4wlVCm3gedKZWLp0Oyel8sIGfeiz54Su+OVT+A==
+
+zod@^3.25.1:
+  version "3.25.3"
+  resolved "https://registry.yarnpkg.com/zod/-/zod-3.25.3.tgz#951c187ed2e6fdc8051015ed4c47bfc16f7566bb"
+  integrity sha512-VGZqnyYNrl8JpEJRZaFPqeVNIuqgXNu4cXZ5cOb6zEUO1OxKbRnWB4UdDIXMmiERWncs0yDQukssHov8JUxykQ==
 
 zustand@5.0.0:
   version "5.0.0"
