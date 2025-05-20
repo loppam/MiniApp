@@ -13,13 +13,13 @@ This is a [NextJS](https://nextjs.org/) + TypeScript + React app.
 To install dependencies:
 
 ```bash
-$ yarn
+$ pnpm
 ```
 
 To run the app:
 
 ```bash
-$ yarn dev
+$ pnpm dev
 ```
 
 To try your app in the Warpcast playground, you'll want to use a tunneling tool like [ngrok](https://ngrok.com/).
@@ -37,7 +37,7 @@ Here's a full walkthrough of creating a frames v2 app:
 We'll start with a fresh NextJS app:
 
 ```bash
-$ yarn create next-app
+$ pnpm create next-app
 ✔ What is your project named? … frames-v2-demo
 ✔ Would you like to use TypeScript? … No / Yes
 ✔ Would you like to use ESLint? … No / Yes
@@ -53,13 +53,13 @@ Creating a new Next.js app in /Users/horsefacts/Projects/frames-v2-demo.
 Next, install frame related dependencies. We'll need the official frame SDK:
 
 ```bash
-$ yarn add @farcaster/frame-sdk
+$ pnpm add @farcaster/frame-sdk
 ```
 
 We'll also need [Wagmi](https://wagmi.sh/) to handle wallet interactions. Let's install it and its dependencies.
 
 ```bash
-$ yarn add wagmi viem@2.x @tanstack/react-query
+$ pnpm add wagmi viem@2.x @tanstack/react-query
 ```
 
 OK, we're ready to get started!
@@ -290,7 +290,7 @@ OK, we're all set up! Now is a good time to try out our frames app in the develo
 First, run the dev server:
 
 ```bash
-$ yarn dev
+$ pnpm dev
 ```
 
 Next, start ngrok:
