@@ -18,11 +18,11 @@ importers:
         specifier: ^0.0.29
         version: 0.0.29(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)
       '@farcaster/frame-sdk':
-        specifier: 0.0.46
-        version: 0.0.46(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)
+        specifier: 0.0.48
+        version: 0.0.48(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)
       '@farcaster/frame-wagmi-connector':
         specifier: ^0.0.34
-        version: 0.0.34(@farcaster/frame-sdk@0.0.46(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))(@wagmi/core@2.16.5(@tanstack/query-core@5.60.6)(@types/react@18.3.12)(react@19.0.0-rc-66855b96-20241106)(typescript@5.7.2)(use-sync-external-store@1.4.0(react@19.0.0-rc-66855b96-20241106))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))
+        version: 0.0.34(@farcaster/frame-sdk@0.0.48(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))(@wagmi/core@2.16.5(@tanstack/query-core@5.60.6)(@types/react@18.3.12)(react@19.0.0-rc-66855b96-20241106)(typescript@5.7.2)(use-sync-external-store@1.4.0(react@19.0.0-rc-66855b96-20241106))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))
       '@farcaster/quick-auth':
         specifier: ^0.0.2
         version: 0.0.2(typescript@5.7.2)
@@ -195,8 +195,8 @@ packages:
   '@farcaster/frame-node@0.0.29':
     resolution: {integrity: sha512-LsXkYYRkNntOnfTzbaS6WUIbrA2H1HG4mH/UXlBSminUI6xVUJwXqGbSsxEneF+fpLQGBjXgqJOjFKnh66wpqQ==}
 
-  '@farcaster/frame-sdk@0.0.46':
-    resolution: {integrity: sha512-W83NNrPv8aqayhhTkLGgqhtHaWo7DhipMbPKzWH78h5MimL/q33+idzvRdIotwbpXhXofqalS7YooQ4tV7Q41Q==}
+  '@farcaster/frame-sdk@0.0.48':
+    resolution: {integrity: sha512-y7TWPf8PRdnIxQmBk0TGfC7WbGFAMdXo2vhPEMRb15YaQtLdGb2ZLEz0kPJA99JXbYm2H6mpEWepRgalmVPdDA==}
 
   '@farcaster/frame-wagmi-connector@0.0.34':
     resolution: {integrity: sha512-TQf/Al8O0AAsdR/4Oog2wUlH3WlMZgXJ2aoMbPg0mFbnQk9pVSUH7ON5MnDcYCQB6IZsBOSlZTed91Z0DxTc/w==}
@@ -210,8 +210,8 @@ packages:
     peerDependencies:
       typescript: 5.8.3
 
-  '@farcaster/quick-auth@0.0.4':
-    resolution: {integrity: sha512-yyFEyJiGUxxB4bvlza2t7FIz9NY67UMVD2V4LuExurntDqV1fQDLh5c6kzghJ/xm0Ow0GGUiF5zRDd7aybuKkw==}
+  '@farcaster/quick-auth@0.0.5':
+    resolution: {integrity: sha512-Z8hWz/7c33zlmII2AJHja/Wz0C03mm2o+CEBtBylmiun1wC4FMgx1Fal699VQvBUG1lpcJ662WxuRNxKogktDw==}
     peerDependencies:
       typescript: 5.8.3
 
@@ -3595,10 +3595,10 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@farcaster/frame-sdk@0.0.46(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)':
+  '@farcaster/frame-sdk@0.0.48(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)':
     dependencies:
       '@farcaster/frame-core': 0.0.40(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)
-      '@farcaster/quick-auth': 0.0.4(typescript@5.7.2)
+      '@farcaster/quick-auth': 0.0.5(typescript@5.7.2)
       comlink: 4.4.2
       eventemitter3: 5.0.1
       ox: 0.4.4(typescript@5.7.2)(zod@3.25.7)
@@ -3609,9 +3609,9 @@ snapshots:
       - utf-8-validate
       - zod
 
-  '@farcaster/frame-wagmi-connector@0.0.34(@farcaster/frame-sdk@0.0.46(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))(@wagmi/core@2.16.5(@tanstack/query-core@5.60.6)(@types/react@18.3.12)(react@19.0.0-rc-66855b96-20241106)(typescript@5.7.2)(use-sync-external-store@1.4.0(react@19.0.0-rc-66855b96-20241106))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))':
+  '@farcaster/frame-wagmi-connector@0.0.34(@farcaster/frame-sdk@0.0.48(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))(@wagmi/core@2.16.5(@tanstack/query-core@5.60.6)(@types/react@18.3.12)(react@19.0.0-rc-66855b96-20241106)(typescript@5.7.2)(use-sync-external-store@1.4.0(react@19.0.0-rc-66855b96-20241106))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))':
     dependencies:
-      '@farcaster/frame-sdk': 0.0.46(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)
+      '@farcaster/frame-sdk': 0.0.48(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)
       '@wagmi/core': 2.16.5(@tanstack/query-core@5.60.6)(@types/react@18.3.12)(react@19.0.0-rc-66855b96-20241106)(typescript@5.7.2)(use-sync-external-store@1.4.0(react@19.0.0-rc-66855b96-20241106))(viem@2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7))
       viem: 2.23.6(bufferutil@4.0.9)(typescript@5.7.2)(utf-8-validate@5.0.10)(zod@3.25.7)
 
@@ -3621,7 +3621,7 @@ snapshots:
       typescript: 5.7.2
       zod: 3.25.7
 
-  '@farcaster/quick-auth@0.0.4(typescript@5.7.2)':
+  '@farcaster/quick-auth@0.0.5(typescript@5.7.2)':
     dependencies:
       jose: 5.10.0
       typescript: 5.7.2
