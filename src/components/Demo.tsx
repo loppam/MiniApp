@@ -38,9 +38,6 @@ import { base, degen, mainnet, monadTestnet, optimism, unichain } from "wagmi/ch
 import { BaseError, UserRejectedRequestError } from "viem";
 import { createStore } from "mipd";
 import { Label } from "~/components/ui/label";
-import { createClient } from "@farcaster/quick-auth";
-
-const quickAuth = createClient();
 
 export default function Demo(
   { title }: { title?: string } = { title: "Frames v2 Demo" }
@@ -348,10 +345,10 @@ export default function Demo(
           <div className="mb-4">
             <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg my-2">
               <pre className="font-mono text-xs whitespace-pre-wrap break-words max-w-[260px] overflow-x-">
-                sdk.actions.signIn
+                sdk.experimental.quickAuth
               </pre>
             </div>
-            <SignIn setToken={setToken} token={token} />
+            <QuickAuth setToken={setToken} token={token} />
           </div>
 
           <div className="mb-4">
@@ -1228,28 +1225,16 @@ function SendSolana() {
   );
 }
 
-function SignIn({ setToken, token }: { setToken: (token: string | null) => void; token: string | null; }) {
+function QuickAuth({ setToken, token }: { setToken: (token: string | null) => void; token: string | null; }) {
   const [signingIn, setSigningIn] = useState(false);
-  const [signInResult, setSignInResult] = useState<SignInCore.SignInResult>();
   const [signInFailure, setSignInFailure] = useState<string>();
 
   const handleSignIn = useCallback(async () => {
     try {
       setSigningIn(true);
       setSignInFailure(undefined);
-      const { nonce } = await quickAuth.generateNonce();
-      const result = await sdk.actions.signIn({
-        nonce,
-        acceptAuthAddress: true
-      });
 
-      setSignInResult(result);
-
-      const { token } = await quickAuth.verifySiwf({
-        domain: (new URL(process.env.NEXT_PUBLIC_URL ?? '')).hostname,
-        message: result.message,
-        signature: result.signature,
-      })
+      const { token } = await sdk.experimental.quickAuth();
 
       setToken(token);
 
@@ -1285,7 +1270,7 @@ function SignIn({ setToken, token }: { setToken: (token: string | null) => void;
     <>
       {status !== "authenticated" && (
         <Button onClick={handleSignIn} disabled={signingIn}>
-          Sign In with Farcaster
+          Sign In
         </Button>
       )}
       {status === "authenticated" && (
@@ -1294,25 +1279,25 @@ function SignIn({ setToken, token }: { setToken: (token: string | null) => void;
         </Button>
       )}
       {token && (
-        <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
-          <div className="font-semibold text-gray-500 mb-1">Session token</div>
-          <div className="whitespace-pre">
-            {JSON.stringify(jwtDecode(token), undefined, 2)}
+        <>
+          <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
+            <div className="font-semibold text-gray-500 mb-1">Raw JWT</div>
+            <div className="whitespace-pre">
+              {token}
+            </div>
           </div>
-        </div>
+          <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
+            <div className="font-semibold text-gray-500 mb-1">Decoded JWT</div>
+            <div className="whitespace-pre">
+              {JSON.stringify(jwtDecode(token), undefined, 2)}
+            </div>
+          </div>
+        </>
       )}
       {signInFailure && !signingIn && (
         <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
           <div className="font-semibold text-gray-500 mb-1">SIWF Result</div>
           <div className="whitespace-pre">{signInFailure}</div>
-        </div>
-      )}
-      {signInResult && !signingIn && (
-        <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
-          <div className="font-semibold text-gray-500 mb-1">SIWF Result</div>
-          <div className="whitespace-pre">
-            {JSON.stringify(signInResult, null, 2)}
-          </div>
         </div>
       )}
     </>
