@@ -1061,7 +1061,7 @@ function SendTokenSolana() {
       <h2 className="text-xl font-semibold">Send Solana Transaction</h2>
 
       <div>
-        <label htmlFor="destination-address" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="destination-address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Destination Address
         </label>
         <input
@@ -1069,7 +1069,7 @@ function SendTokenSolana() {
           id="destination-address"
           value={destinationAddress}
           onChange={(e) => setDestinationAddress(e.target.value)}
-          className="w-full" // Ensure input takes full width of its container
+          className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
         />
       </div>
 
@@ -1079,21 +1079,21 @@ function SendTokenSolana() {
           id="use-versioned"
           checked={useVersionedTransaction}
           onChange={(e) => setUseVersionedTransaction(e.target.checked)}
-          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+          className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-white dark:bg-gray-900"
         />
-        <label htmlFor="use-versioned" className="text-sm font-medium text-gray-700">
+        <label htmlFor="use-versioned" className="text-sm font-medium text-gray-700 dark:text-gray-300">
           Use Versioned Transaction
         </label>
       </div>
 
       <div>
-        <label htmlFor="token-select" className="block text-sm font-medium text-gray-700 mb-1">
+        <label htmlFor="token-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
           Select Token
         </label>
         <select
           value={selectedSymbol}
           onChange={(e) => handleValueChange(e.target.value)}
-          className="w-full" // Ensure select takes full width of its container
+          className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
         >
           {tokenOptions.map(option => (
             <option key={option.value} value={option.value} disabled={option.disabled}>
@@ -1280,14 +1280,14 @@ function QuickAuth({ setToken, token }: { setToken: (token: string | null) => vo
       )}
       {token && (
         <>
-          <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
-            <div className="font-semibold text-gray-500 mb-1">Raw JWT</div>
+          <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 dark:bg-gray-800 rounded-lg font-mono">
+            <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">Raw JWT</div>
             <div className="whitespace-pre">
               {token}
             </div>
           </div>
-          <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
-            <div className="font-semibold text-gray-500 mb-1">Decoded JWT</div>
+          <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 dark:bg-gray-800 rounded-lg font-mono">
+            <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">Decoded JWT</div>
             <div className="whitespace-pre">
               {JSON.stringify(jwtDecode(token), undefined, 2)}
             </div>
@@ -1295,8 +1295,8 @@ function QuickAuth({ setToken, token }: { setToken: (token: string | null) => vo
         </>
       )}
       {signInFailure && !signingIn && (
-        <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 rounded-lg font-mono">
-          <div className="font-semibold text-gray-500 mb-1">SIWF Result</div>
+        <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 dark:bg-gray-800 rounded-lg font-mono">
+          <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">SIWF Result</div>
           <div className="whitespace-pre">{signInFailure}</div>
         </div>
       )}
@@ -1311,7 +1311,7 @@ function ViewProfile() {
     <>
       <div>
         <Label
-          className="text-xs font-semibold text-gray-500 mb-1"
+          className="text-xs font-semibold text-gray-500 dark:text-gray-300 mb-1"
           htmlFor="view-profile-fid"
         >
           Fid
