@@ -565,7 +565,7 @@ function ComposeCastAction() {
       </Button>
       {result && (
         <div className="mt-2 text-xs">
-          <div>Cast Hash: {result.cast.hash}</div>
+          <div>Cast Hash: {result.cast?.hash}</div>
         </div>
       )}
     </>
