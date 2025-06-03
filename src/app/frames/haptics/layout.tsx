@@ -5,14 +5,13 @@ const appUrl = process.env.NEXT_PUBLIC_URL;
 
 const frame = {
   version: "next",
-  imageUrl: `${appUrl}/opengraph-image`,
+  imageUrl: `https://farcaster.xyz/og-logo.png`,
   button: {
     title: "Launch haptics",
     action: {
       type: "launch_frame",
       name: "Farcaster Haptics Demo",
-      url: appUrl,
-      splashImageUrl: `${appUrl}/splash.png`,
+      splashImageUrl: `https://frames-v2.vercel.app/splash.png`,
       splashBackgroundColor: "#f7f7f7",
     },
   },
