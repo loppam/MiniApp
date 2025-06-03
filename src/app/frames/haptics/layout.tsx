@@ -1,8 +1,6 @@
 import { Metadata } from "next";
 import { Providers } from "~/app/providers";
 
-const appUrl = process.env.NEXT_PUBLIC_URL;
-
 const frame = {
   version: "next",
   imageUrl: `https://farcaster.xyz/og-logo.png`,
