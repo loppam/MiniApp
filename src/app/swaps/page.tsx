@@ -5,9 +5,9 @@ import { sdk } from '@farcaster/frame-sdk';
 
 export default function SwapsPage() {
   const [isSwapping, setIsSwapping] = useState(false);
-  const [swapResult, setSwapResult] = useState<any>(null);
+  const [swapResult, setSwapResult] = useState<unknown>(null);
   const [isSending, setIsSending] = useState(false);
-  const [sendResult, setSendResult] = useState<any>(null);
+  const [sendResult, setSendResult] = useState<unknown>(null);
 
   useEffect(() => {
     // Hide splash screen when ready
@@ -112,7 +112,7 @@ export default function SwapsPage() {
       </div>
 
       <div className="mb-32 grid text-center gap-8 lg:mb-0 lg:w-full lg:max-w-5xl lg:grid-cols-2 lg:text-left">
-        {swapResult && (
+        {swapResult !== null && (
           <div className="group rounded-lg border border-transparent px-5 py-4 w-full">
             <h2 className="mb-3 text-2xl font-semibold">Swap Result:</h2>
             <pre className="overflow-auto bg-gray-100 dark:bg-gray-800 p-4 rounded-lg text-sm leading-6 max-w-full">
@@ -121,7 +121,7 @@ export default function SwapsPage() {
           </div>
         )}
 
-        {sendResult && (
+        {sendResult !== null && (
           <div className="group rounded-lg border border-transparent px-5 py-4 w-full">
             <h2 className="mb-3 text-2xl font-semibold">Send Result:</h2>
             <pre className="overflow-auto bg-gray-100 dark:bg-gray-800 p-4 rounded-lg text-sm leading-6 max-w-full">
