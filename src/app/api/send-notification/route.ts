@@ -1,4 +1,4 @@
-import { notificationDetailsSchema } from "@farcaster/frame-core";
+import { notificationDetailsSchema } from "@farcaster/miniapp-core";
 import { NextRequest } from "next/server";
 import { z } from "zod";
 import { setUserNotificationDetails } from "~/lib/kv";

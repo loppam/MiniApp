@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import sdk, { type Context } from "@farcaster/frame-sdk"
+import sdk, { type Context } from "@farcaster/miniapp-sdk"
 import { Button } from "~/components/ui/Button"
 
 export default function Page() {

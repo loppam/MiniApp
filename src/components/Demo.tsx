@@ -26,7 +26,7 @@ import sdk, {
   MiniAppNotificationDetails,
   SignIn as SignInCore,
   type Context,
-} from "@farcaster/frame-sdk";
+} from "@farcaster/miniapp-sdk";
 import {
   useAccount,
   useSendTransaction,

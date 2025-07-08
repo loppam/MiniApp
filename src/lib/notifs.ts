@@ -1,7 +1,7 @@
 import {
   SendNotificationRequest,
   sendNotificationResponseSchema,
-} from "@farcaster/frame-sdk";
+} from "@farcaster/miniapp-sdk";
 import { getUserNotificationDetails } from "~/lib/kv";
 
 const appUrl = process.env.NEXT_PUBLIC_URL || "";
