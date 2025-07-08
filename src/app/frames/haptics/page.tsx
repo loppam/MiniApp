@@ -6,7 +6,7 @@ import { Button } from "~/components/ui/Button"
 
 export default function Page() {
   const [hasHaptics, setHasHaptics] = useState(false)
-  const [context, setContext] = useState<Context.FrameContext>()
+  const [context, setContext] = useState<Context.MiniAppContext>()
   const [isSDKLoaded, setIsSDKLoaded] = useState(false)
 
   useEffect(() => {
