@@ -1,4 +1,4 @@
-import { FrameNotificationDetails } from "@farcaster/frame-sdk";
+import { MiniAppNotificationDetails } from "@farcaster/frame-sdk";
 import { Redis } from "@upstash/redis";
 
 const redis = new Redis({
@@ -12,15 +12,15 @@ function getUserNotificationDetailsKey(fid: number): string {
 
 export async function getUserNotificationDetails(
   fid: number
-): Promise<FrameNotificationDetails | null> {
-  return await redis.get<FrameNotificationDetails>(
+): Promise<MiniAppNotificationDetails | null> {
+  return await redis.get<MiniAppNotificationDetails>(
     getUserNotificationDetailsKey(fid)
   );
 }
 
 export async function setUserNotificationDetails(
   fid: number,
-  notificationDetails: FrameNotificationDetails
+  notificationDetails: MiniAppNotificationDetails
 ): Promise<void> {
   await redis.set(getUserNotificationDetailsKey(fid), notificationDetails);
 }
