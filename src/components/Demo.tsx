@@ -23,7 +23,7 @@ import { Input } from "../components/ui/input";
 import sdk, {
   AddMiniApp,
   ComposeCast,
-  FrameNotificationDetails,
+  MiniAppNotificationDetails,
   SignIn as SignInCore,
   type Context,
 } from "@farcaster/frame-sdk";
@@ -51,14 +51,14 @@ export default function Demo(
   { title }: { title?: string } = { title: "Frames v2 Demo" }
 ) {
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
-  const [context, setContext] = useState<Context.FrameContext>();
+  const [context, setContext] = useState<Context.MiniAppContext>();
   const [token, setToken] = useState<string | null>(null);
   const [isContextOpen, setIsContextOpen] = useState(false);
   const [txHash, setTxHash] = useState<string | null>(null);
 
   const [added, setAdded] = useState(false);
   const [notificationDetails, setNotificationDetails] =
-    useState<FrameNotificationDetails | null>(null);
+    useState<MiniAppNotificationDetails | null>(null);
 
   const [lastEvent, setLastEvent] = useState("");
 
@@ -125,9 +125,9 @@ export default function Demo(
       setContext(context);
       setAdded(context.client.added);
 
-      sdk.on("frameAdded", ({ notificationDetails }) => {
+      sdk.on("miniAppAdded", ({ notificationDetails }) => {
         setLastEvent(
-          `frameAdded${!!notificationDetails ? ", notifications enabled" : ""}`
+          `miniAppAdded${!!notificationDetails ? ", notifications enabled" : ""}`
         );
 
         setAdded(true);
@@ -136,12 +136,12 @@ export default function Demo(
         }
       });
 
-      sdk.on("frameAddRejected", ({ reason }) => {
-        setLastEvent(`frameAddRejected, reason ${reason}`);
+      sdk.on("miniAppAddRejected", ({ reason }) => {
+        setLastEvent(`miniAppAddRejected, reason ${reason}`);
       });
 
-      sdk.on("frameRemoved", () => {
-        setLastEvent("frameRemoved");
+      sdk.on("miniAppRemoved", () => {
+        setLastEvent("miniAppRemoved");
         setAdded(false);
         setNotificationDetails(null);
       });
@@ -381,6 +381,15 @@ export default function Demo(
               </pre>
             </div>
             <ViewProfile />
+          </div>
+
+          <div className="mb-4">
+            <div className="p-2 bg-gray-100 dark:bg-gray-800 rounded-lg my-2">
+              <pre className="font-mono text-xs whitespace-pre-wrap break-words max-w-[260px] overflow-x-">
+                sdk.actions.openMiniApp
+              </pre>
+            </div>
+            <OpenMiniApp />
           </div>
 
           <div className="mb-4">
@@ -1286,6 +1295,84 @@ function ViewProfile() {
       >
         View Profile
       </Button>
+    </>
+  );
+}
+
+function OpenMiniApp() {
+  const [selectedUrl, setSelectedUrl] = useState("");
+  const [openResult, setOpenResult] = useState<string>("");
+  const [isOpening, setIsOpening] = useState(false);
+
+  const urlOptions = [
+    { label: "Select a URL", value: "", disabled: true },
+    { 
+      label: "Bountycaster (Embed)", 
+      value: "https://www.bountycaster.xyz/bounty/0x392626b092e05955c11c41c5df8e2fb8003ece78" 
+    },
+    { 
+      label: "Eggs (Launcher)", 
+      value: "https://farcaster.xyz/miniapps/Qqjy9efZ-1Qu/eggs" 
+    },
+    { 
+      label: "Invalid URL", 
+      value: "https://swizec.com/" 
+    },
+  ];
+
+  const handleOpenMiniApp = useCallback(async () => {
+    if (!selectedUrl) {
+      setOpenResult("Please select a URL");
+      return;
+    }
+
+    setIsOpening(true);
+    setOpenResult("");
+
+    try {
+      await sdk.actions.openMiniApp({url: selectedUrl});
+      setOpenResult("Mini app opened successfully");
+    } catch (error) {
+      setOpenResult(`Error: ${error instanceof Error ? error.message : String(error)}`);
+    } finally {
+      setIsOpening(false);
+    }
+  }, [selectedUrl]);
+
+  return (
+    <>
+      <div>
+        <Label
+          className="text-xs font-semibold text-gray-500 dark:text-gray-300 mb-1"
+          htmlFor="mini-app-select"
+        >
+          Select Mini App URL
+        </Label>
+        <select
+          id="mini-app-select"
+          value={selectedUrl}
+          onChange={(e) => setSelectedUrl(e.target.value)}
+          className="w-full mb-2 p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded"
+        >
+          {urlOptions.map(option => (
+            <option key={option.value} value={option.value} disabled={option.disabled}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+      <Button
+        onClick={handleOpenMiniApp}
+        disabled={!selectedUrl || isOpening}
+        isLoading={isOpening}
+      >
+        Open Mini App
+      </Button>
+      {openResult && (
+        <div className="mt-2 text-xs text-gray-600 dark:text-gray-400">
+          {openResult}
+        </div>
+      )}
     </>
   );
 }
