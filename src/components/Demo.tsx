@@ -1126,6 +1126,7 @@ function TestBatchOperation() {
   const [forceAtomic, setForceAtomic] = useState(false);
   const [isGettingCapabilities, setIsGettingCapabilities] = useState(false);
   const [isSendingCalls, setIsSendingCalls] = useState(false);
+  const { switchChain } = useSwitchChain();
 
   const [batchCallId, setBatchCallId] = useState<string | null>(null);
   const [batchCallResult, setBatchCallResult] = useState<string | null>(null);
@@ -1160,6 +1161,7 @@ function TestBatchOperation() {
       setError('No wallet client or address');
       return;
     }
+    switchChain({ chainId: base.id });
     
     setIsSendingCalls(true);
     setError(null);
@@ -1170,6 +1172,7 @@ function TestBatchOperation() {
       const { id } = await walletClient.sendCalls({ 
         account: address,
         forceAtomic,
+        chain: base,
         calls: [
           {
             to: '0x729170d38dd5449604f35f349fdfcc9ad08257cd',
