@@ -1202,6 +1202,7 @@ function TestBatchOperation() {
         pollingInterval: 200,
       });
       console.log('result', result);
+      setBatchCallResult(safeJsonStringify(result));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
