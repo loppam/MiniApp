@@ -1193,6 +1193,11 @@ function TestBatchOperation() {
             to: '0xf4319842934025823b461db1fa545d144833e84e',
             value: parseEther('0.00002')
           },
+          {
+            to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
+            value: parseEther('0'),
+            data: '0xa9059cbb000000000000000000000000729170d38dd5449604f35f349fdfcc9ad08257cd0000000000000000000000000000000000000000000000000000000000002710'
+          },
         ],
       });
       setBatchCallId(id);
