@@ -50,7 +50,7 @@ import { Label } from "~/components/ui/label";
 
 
 // Handles JSON strinify with `BigInt` values
-function safeJsonStringify(obj: any) {
+function safeJsonStringify(obj: unknown) {
   return JSON.stringify(obj, (key, value) => {
     if (typeof value === 'bigint') {
       return value.toString();
@@ -1207,7 +1207,7 @@ function TestBatchOperation() {
     } finally {
       setIsSendingCalls(false);
     }
-  }, [walletClient, address, forceAtomic]);
+  }, [walletClient, address, forceAtomic, switchChain]);
 
   return (
     <>
