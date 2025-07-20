@@ -341,7 +341,7 @@ export default function Demo(
           {isContextOpen && (
             <div className="p-4 mt-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
               <pre className="font-mono text-xs whitespace-pre-wrap break-words max-w-[260px] overflow-x-">
-                {JSON.stringify(context, null, 2)}
+                {safeJsonStringify(context)}
               </pre>
             </div>
           )}
@@ -1201,7 +1201,7 @@ function TestBatchOperation() {
         id,
         pollingInterval: 200,
       });
-      setBatchCallResult(safeJsonStringify(result));
+      console.log('result', result);
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
