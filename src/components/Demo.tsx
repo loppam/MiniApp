@@ -48,6 +48,17 @@ import { BaseError, parseEther, UserRejectedRequestError } from "viem";
 import { createStore } from "mipd";
 import { Label } from "~/components/ui/label";
 
+
+// Handles JSON strinify with `BigInt` values
+function safeJsonStringify(obj: any) {
+  return JSON.stringify(obj, (key, value) => {
+    if (typeof value === 'bigint') {
+      return value.toString();
+    }
+    return value;
+  });
+}
+
 export default function Demo(
   { title }: { title?: string } = { title: "Frames v2 Demo" }
 ) {
@@ -1190,7 +1201,7 @@ function TestBatchOperation() {
         id,
         pollingInterval: 200,
       });
-      setBatchCallResult(JSON.stringify(result, null, 2));
+      setBatchCallResult(safeJsonStringify(result));
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Unknown error');
     } finally {
