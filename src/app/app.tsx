@@ -3,14 +3,12 @@
 import dynamic from "next/dynamic";
 import ReactDOM from "react-dom";
 
-const Demo = dynamic(() => import("~/components/Demo"), {
+const TradoorApp = dynamic(() => import("~/components/TradoorApp"), {
   ssr: false,
 });
 
-export default function App(
-  { title }: { title?: string } = { title: "Frames v2 Demo" }
-) {
-  ReactDOM.preconnect('https://auth.farcaster.xyz')
+export default function App() {
+  ReactDOM.preconnect("https://auth.farcaster.xyz");
 
-  return <Demo title={title} />;
+  return <TradoorApp />;
 }
