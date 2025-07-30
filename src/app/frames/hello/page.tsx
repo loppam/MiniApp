@@ -7,10 +7,10 @@ const frame = {
   version: "next",
   imageUrl: `${appUrl}/frames/hello/opengraph-image`,
   button: {
-    title: "Launch Frame",
+    title: "Launch App",
     action: {
       type: "launch_frame",
-      name: "Farcaster Frames v2 Demo",
+      name: "Tradoor",
       url: `${appUrl}/frames/hello/`,
       splashImageUrl: `${appUrl}/splash.png`,
       splashBackgroundColor: "#f7f7f7",
@@ -19,11 +19,11 @@ const frame = {
 };
 
 export const metadata: Metadata = {
-  title: "Hello, world!",
-  description: "A simple hello world frame",
+  title: "Tradoor",
+  description: "Tradoor is an airdrop app.",
   openGraph: {
-    title: "Hello, world!",
-    description: "A simple hello world frame",
+    title: "Tradoor",
+    description: "Tradoor is an airdrop app.",
   },
   other: {
     "fc:frame": JSON.stringify(frame),

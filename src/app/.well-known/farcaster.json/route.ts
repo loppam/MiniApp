@@ -11,11 +11,11 @@ export async function GET() {
     },
     frame: {
       version: "1",
-      name: "Frames v2 Demo",
+      name: "Tradoor",
       iconUrl: `${appUrl}/icon.png`,
       homeUrl: appUrl,
       imageUrl: `${appUrl}/frames/hello/opengraph-image`,
-      buttonTitle: "Launch Frame",
+      buttonTitle: "Launch App",
       splashImageUrl: `${appUrl}/splash.png`,
       splashBackgroundColor: "#f7f7f7",
       webhookUrl: `${appUrl}/api/webhook`,
