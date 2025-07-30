@@ -62,7 +62,7 @@ export default function Page() {
           paddingRight: context?.client.safeAreaInsets?.right ?? 0,
         }}
       >
-        <div className="w-[300px] mx-auto py-2 px-2">
+        <div className="py-2 px-2">
           <h1 className="text-2xl font-bold text-center mb-4">Haptics Demo</h1>
           <p className="text-sm mb-4">Your device does not support haptics.</p>
         </div>
@@ -79,7 +79,7 @@ export default function Page() {
         paddingRight: context?.client.safeAreaInsets?.right ?? 0,
       }}
     >
-      <div className="w-[300px] mx-auto py-2 px-2">
+      <div className="py-2 px-2">
         <h1 className="text-2xl font-bold text-center mb-4">Haptics Demo</h1>
 
         <div>

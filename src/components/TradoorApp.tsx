@@ -44,7 +44,7 @@ export default function TradoorApp(
   }, [isSDKLoaded]);
 
   const userStats = {
-    address: address || "0x742d35Cc6634C0532925a3b8D0bE6038C38e3c",
+    address: address || "0xnotconnected",
     points: 2750,
     rank: 156,
     tier: "Silver",
@@ -70,7 +70,7 @@ export default function TradoorApp(
 
   if (!isSDKLoaded) {
     return (
-      <div className="w-[300px] mx-auto py-4 px-2">
+      <div className="py-4 px-2">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
           <p className="text-sm text-muted-foreground">Loading {title}...</p>
@@ -80,7 +80,7 @@ export default function TradoorApp(
   }
 
   return (
-    <div className="w-[300px] mx-auto min-h-screen bg-background text-foreground dark pb-20">
+    <div className="min-h-screen bg-background text-foreground dark pb-20">
       {/* Mobile Header */}
       <header className="sticky top-0 z-40 bg-background/95 backdrop-blur border-b border-border">
         <div className="px-4 py-3">
