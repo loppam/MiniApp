@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react"
 import sdk, { type Context } from "@farcaster/miniapp-sdk"
-import { Button } from "~/components/ui/Button"
+import { Button } from "~/components/ui/button"
 
 export default function Page() {
   const [hasHaptics, setHasHaptics] = useState(false)

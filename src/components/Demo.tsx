@@ -41,7 +41,7 @@ import {
 } from "wagmi";
 
 import { config } from "~/components/providers/WagmiProvider";
-import { Button } from "~/components/ui/Button";
+import { Button } from "~/components/ui/button";
 import { truncateAddress } from "~/lib/truncateAddress";
 import { base, degen, mainnet, monadTestnet, optimism, unichain } from "wagmi/chains";
 import { BaseError, parseEther, UserRejectedRequestError } from "viem";
