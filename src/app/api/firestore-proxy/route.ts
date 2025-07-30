@@ -82,11 +82,17 @@ async function handleFirestoreAction(
         return { success: true, data: { achievements } };
 
       case "initializeUser":
+        console.log("Initializing user:", {
+          address,
+          profileData: data.profileData,
+          context: data.context,
+        });
         await userService.upsertUserProfile(
           address,
           data.profileData as Record<string, unknown>,
           data.context as Record<string, unknown>
         );
+        console.log("User initialization completed");
         return { success: true };
 
       case "updateLeaderboardEntry":
@@ -100,7 +106,11 @@ async function handleFirestoreAction(
       case "executeTrade":
         await transactionService.addTransaction({
           userAddress: address,
-          type: data.type as "buy" | "sell" | "base_transaction" | "streak_bonus",
+          type: data.type as
+            | "buy"
+            | "sell"
+            | "base_transaction"
+            | "streak_bonus",
           amount: data.amount as number,
           price: data.price as number,
           points: 5, // Each trade earns 5 points
@@ -150,6 +160,11 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       message,
       signature
     );
+    console.log("Signature verification result:", {
+      address,
+      action,
+      isValidSignature,
+    });
     if (!isValidSignature) {
       return NextResponse.json(
         { success: false, error: "Invalid signature" },

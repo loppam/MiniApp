@@ -58,7 +58,7 @@ const rankTiers = [
 ];
 
 export function RankUpTransactions() {
-  const { address } = useAccount();
+  const { address, isConnected } = useAccount();
   const {
     profile,
     loading: profileLoading,
@@ -71,9 +71,12 @@ export function RankUpTransactions() {
   } = useTransactions(address, 10);
   const { executeTrade } = useTrading();
 
-  const formatTime = (timestamp: Timestamp | Date | string | null | undefined) => {
+  const formatTime = (
+    timestamp: Timestamp | Date | string | null | undefined
+  ) => {
     if (!timestamp) return "Unknown";
-    const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+    const date =
+      timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
     return date.toLocaleString();
   };
 
@@ -112,12 +115,24 @@ export function RankUpTransactions() {
   }
 
   if (!profile) {
+    console.log("No profile found for address:", address);
+    console.log("Profile loading state:", {
+      profileLoading,
+      profileError,
+      address,
+      isConnected,
+    });
     return (
       <div className="text-center py-4">
         <div className="text-sm text-muted-foreground">No profile found</div>
         <div className="text-xs text-muted-foreground mt-1">
-          Connect your wallet to start trading
+          {isConnected
+            ? "Profile is being created..."
+            : "Connect your wallet to start trading"}
         </div>
+        {profileError && (
+          <div className="text-xs text-red-500 mt-2">Error: {profileError}</div>
+        )}
       </div>
     );
   }

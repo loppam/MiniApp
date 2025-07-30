@@ -11,8 +11,10 @@ import {
   Loader2,
 } from "lucide-react";
 import { usePlatformStats, useMilestones } from "~/hooks/useFirebase";
+import { useAccount } from "wagmi";
 
 export function ProjectInfo() {
+  const { isConnected } = useAccount();
   const {
     stats,
     loading: statsLoading,
@@ -209,10 +211,19 @@ export function ProjectInfo() {
       </Card>
 
       <div className="text-center">
-        <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-          <ExternalLink className="h-4 w-4 mr-2" />
-          Connect Wallet to Start
-        </Button>
+        {!isConnected ? (
+          <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Connect Wallet to Start
+          </Button>
+        ) : (
+          <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
+            <div className="flex items-center justify-center gap-2 text-green-600">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-sm font-medium">Wallet Connected</span>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

@@ -1,6 +1,6 @@
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount, useSignMessage, useWalletClient } from "wagmi";
 
-// Types for the secure client
+// Types for the API
 interface SecureFirestoreResponse {
   success: boolean;
   data?: Record<string, unknown>;
@@ -172,14 +172,28 @@ export class SecureFirestoreClient {
 export function useSecureFirestore() {
   const { address } = useAccount();
   const { signMessageAsync } = useSignMessage();
+  const { data: walletClient } = useWalletClient();
+
+  console.log("useSecureFirestore:", {
+    address,
+    hasSignMessageAsync: !!signMessageAsync,
+    hasWalletClient: !!walletClient,
+  });
 
   if (!address) {
+    console.log("No address, returning null");
+    return null;
+  }
+
+  if (!signMessageAsync) {
+    console.log("No signMessageAsync, returning null");
     return null;
   }
 
   // Wrap signMessageAsync to match the expected signature
   const signMessage = (message: string) => signMessageAsync({ message });
 
+  console.log("Creating SecureFirestoreClient");
   return new SecureFirestoreClient(address, signMessage);
 }
 

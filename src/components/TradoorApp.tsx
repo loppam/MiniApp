@@ -33,12 +33,19 @@ export default function TradoorApp(
   useEffect(() => {
     const load = async () => {
       try {
+        console.log("Loading SDK and initializing user...");
         const sdkContext = await sdk.context;
+        console.log("SDK context loaded:", sdkContext);
         setContext(sdkContext);
 
         // Initialize Firebase user if connected
         if (address && isConnected) {
+          console.log("Initializing user with address:", address);
+          console.log("SDK context for initialization:", sdkContext);
           await initializeUser(sdkContext);
+          console.log("User initialization completed");
+        } else {
+          console.log("Not initializing user:", { address, isConnected });
         }
 
         sdk.actions.ready();
@@ -53,6 +60,11 @@ export default function TradoorApp(
       load();
     }
   }, [isSDKLoaded, address, isConnected, initializeUser]);
+
+  // Debug logging for profile
+  useEffect(() => {
+    console.log("Profile state:", { userProfile, address, isConnected });
+  }, [userProfile, address, isConnected]);
 
   // Use Firebase profile data or fallback to mock data
   const userStats = {

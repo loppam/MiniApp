@@ -29,11 +29,13 @@ export const useUserProfile = (address?: string) => {
 
   useEffect(() => {
     if (!address) {
+      console.log("No address provided, clearing profile");
       setProfile(null);
       setLoading(false);
       return;
     }
 
+    console.log("Loading profile for address:", address);
     setLoading(true);
     setError(null);
 
@@ -41,10 +43,12 @@ export const useUserProfile = (address?: string) => {
     userService
       .getUserProfile(address)
       .then((userProfile) => {
+        console.log("Profile loaded:", userProfile);
         setProfile(userProfile);
         setLoading(false);
       })
       .catch((err) => {
+        console.error("Error loading profile:", err);
         setError(err.message);
         setLoading(false);
       });
@@ -53,6 +57,7 @@ export const useUserProfile = (address?: string) => {
     const unsubscribe = createRealtimeListeners.onUserProfileChange(
       address,
       (userProfile) => {
+        console.log("Profile updated via real-time listener:", userProfile);
         setProfile(userProfile);
         setLoading(false);
       }
@@ -373,10 +378,15 @@ export const useUserAuth = () => {
 
   const initializeUser = useCallback(
     async (context: Record<string, unknown>) => {
-      if (!address || !isConnected || !secureClient) return;
+      if (!address || !isConnected || !secureClient) {
+        console.log("Cannot initialize user:", { address, isConnected, hasSecureClient: !!secureClient });
+        return;
+      }
 
       try {
+        console.log("Calling initializeUser with:", { address, context });
         const result = await secureClient.initializeUser({}, context);
+        console.log("Initialize user result:", result);
         if (!result.success) {
           throw new Error(result.error || "Failed to initialize user");
         }
