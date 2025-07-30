@@ -16,6 +16,7 @@ import { truncateAddress } from "~/lib/truncateAddress";
 export default function TradoorApp() {
   const [activeTab, setActiveTab] = useState("home");
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [context, setContext] = useState<Context.MiniAppContext>();
 
   const { address, isConnected } = useAccount();
