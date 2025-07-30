@@ -6,7 +6,7 @@ import { Leaderboard } from "./Leaderboard";
 import { RankUpTransactions } from "./RankUpTransactions";
 import { Profile } from "./Profile";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import { Button } from "./ui/Button";
 import { Home, TrendingUp, User, Zap, Trophy } from "lucide-react";
 import sdk, { type Context } from "@farcaster/miniapp-sdk";
 import { useAccount, useConnect, useDisconnect } from "wagmi";

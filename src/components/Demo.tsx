@@ -9,7 +9,7 @@ import {
 import {
   useConnection as useSolanaConnection,
   useWallet as useSolanaWallet,
-} from '@solana/wallet-adapter-react';
+} from "@solana/wallet-adapter-react";
 import { jwtDecode } from "jwt-decode";
 import {
   PublicKey as SolanaPublicKey,
@@ -41,18 +41,24 @@ import {
 } from "wagmi";
 
 import { config } from "~/components/providers/WagmiProvider";
-import { Button } from "~/components/ui/button";
+import { Button } from "~/components/ui/Button";
 import { truncateAddress } from "~/lib/truncateAddress";
-import { base, degen, mainnet, monadTestnet, optimism, unichain } from "wagmi/chains";
+import {
+  base,
+  degen,
+  mainnet,
+  monadTestnet,
+  optimism,
+  unichain,
+} from "wagmi/chains";
 import { BaseError, parseEther, UserRejectedRequestError } from "viem";
 import { createStore } from "mipd";
 import { Label } from "~/components/ui/label";
 
-
 // Handles JSON strinify with `BigInt` values
 function safeJsonStringify(obj: unknown) {
   return JSON.stringify(obj, (key, value) => {
-    if (typeof value === 'bigint') {
+    if (typeof value === "bigint") {
       return value.toString();
     }
     return value;
@@ -139,7 +145,9 @@ export default function Demo(
 
       sdk.on("miniAppAdded", ({ notificationDetails }) => {
         setLastEvent(
-          `miniAppAdded${!!notificationDetails ? ", notifications enabled" : ""}`
+          `miniAppAdded${
+            !!notificationDetails ? ", notifications enabled" : ""
+          }`
         );
 
         setAdded(true);
@@ -173,8 +181,8 @@ export default function Demo(
 
       const ethereumProvider = await sdk.wallet.getEthereumProvider();
       ethereumProvider?.on("chainChanged", (chainId) => {
-        console.log("[ethereumProvider] chainChanged", chainId)
-      })
+        console.log("[ethereumProvider] chainChanged", chainId);
+      });
 
       sdk.actions.ready({});
 
@@ -330,8 +338,9 @@ export default function Demo(
             className="flex items-center gap-2 transition-colors"
           >
             <span
-              className={`transform transition-transform ${isContextOpen ? "rotate-90" : ""
-                }`}
+              className={`transform transition-transform ${
+                isContextOpen ? "rotate-90" : ""
+              }`}
             >
               ➤
             </span>
@@ -516,8 +525,8 @@ export default function Demo(
                       {isConfirming
                         ? "Confirming..."
                         : isConfirmed
-                          ? "Confirmed!"
-                          : "Pending"}
+                        ? "Confirmed!"
+                        : "Pending"}
                     </div>
                   </div>
                 )}
@@ -553,7 +562,8 @@ export default function Demo(
           <div>
             <h2 className="font-2xl font-bold">Solana</h2>
             <div className="my-2 text-xs">
-              Address: <pre className="inline">{truncateAddress(solanaAddress)}</pre>
+              Address:{" "}
+              <pre className="inline">{truncateAddress(solanaAddress)}</pre>
             </div>
             <div className="mb-4">
               <SignSolanaMessage />
@@ -574,19 +584,17 @@ export default function Demo(
 function ComposeCastAction() {
   const [result, setResult] = useState<ComposeCast.Result>();
   const compose = useCallback(async () => {
-    setResult(await sdk.actions.composeCast({
-      text: 'Hello from Demo Mini App',
-      embeds: ["https://test.com/foo%20bar"],
-    }))
+    setResult(
+      await sdk.actions.composeCast({
+        text: "Hello from Demo Mini App",
+        embeds: ["https://test.com/foo%20bar"],
+      })
+    );
   }, []);
 
   return (
     <>
-      <Button
-        onClick={compose}
-      >
-        Compose Cast
-      </Button>
+      <Button onClick={compose}>Compose Cast</Button>
       {result && (
         <div className="mt-2 text-xs">
           <div>Cast Hash: {result.cast?.hash}</div>
@@ -684,8 +692,8 @@ function SendEth() {
             {isConfirming
               ? "Confirming..."
               : isConfirmed
-                ? "Confirmed!"
-                : "Pending"}
+              ? "Confirmed!"
+              : "Pending"}
           </div>
         </div>
       )}
@@ -703,7 +711,7 @@ function SignSolanaMessage() {
     setSignPending(true);
     try {
       if (!signMessage) {
-        throw new Error('no Solana signMessage');
+        throw new Error("no Solana signMessage");
       }
       const input = Buffer.from("Hello from Frames v2!", "utf8");
       const signatureBytes = await signMessage(input);
@@ -741,65 +749,69 @@ function SignSolanaMessage() {
 
 // I am collecting lamports to buy a boat
 const ashoatsPhantomSolanaWallet =
-  'Ao3gLNZAsbrmnusWVqQCPMrcqNi6jdYgu8T6NCoXXQu1';
+  "Ao3gLNZAsbrmnusWVqQCPMrcqNi6jdYgu8T6NCoXXQu1";
 
 function SendTokenSolana() {
   const [state, setState] = useState<
-    | { status: 'none' }
-    | { status: 'pending' }
-    | { status: 'error'; error: Error }
-    | { status: 'success'; signature: string; type: 'send' | 'approve' }
-  >({ status: 'none' });
+    | { status: "none" }
+    | { status: "pending" }
+    | { status: "error"; error: Error }
+    | { status: "success"; signature: string; type: "send" | "approve" }
+  >({ status: "none" });
 
-  const [selectedSymbol, setSelectedSymbol] = useState(''); // Initialize with empty string
-  const [associatedMapping, setAssociatedMapping] = useState<{ token: string, decimals: number } | undefined>(undefined);
+  const [selectedSymbol, setSelectedSymbol] = useState(""); // Initialize with empty string
+  const [associatedMapping, setAssociatedMapping] = useState<
+    { token: string; decimals: number } | undefined
+  >(undefined);
 
   const { publicKey, sendTransaction } = useSolanaWallet();
   const solanaAddress = publicKey?.toBase58();
 
-  const [destinationAddress, setDestinationAddress] = useState(solanaAddress ?? '');
-  const [simulation, setSimulation] = useState('');
+  const [destinationAddress, setDestinationAddress] = useState(
+    solanaAddress ?? ""
+  );
+  const [simulation, setSimulation] = useState("");
   const [useVersionedTransaction, setUseVersionedTransaction] = useState(false);
 
   const tokenOptions = [
-    { label: 'Select a token', value: '', disabled: true }, // Added a disabled default option
-    { label: 'USDC', value: 'USDC' },
-    { label: 'Tether', value: 'Tether' },
-    { label: 'Bonk', value: 'Bonk' },
-    { label: 'GOGS', value: 'GOGS' },
+    { label: "Select a token", value: "", disabled: true }, // Added a disabled default option
+    { label: "USDC", value: "USDC" },
+    { label: "Tether", value: "Tether" },
+    { label: "Bonk", value: "Bonk" },
+    { label: "GOGS", value: "GOGS" },
   ];
 
   const handleValueChange = (value: string) => {
     setSelectedSymbol(value);
-    setState({ status: 'none' }); // Reset status when token changes
+    setState({ status: "none" }); // Reset status when token changes
     if (!value) {
       setAssociatedMapping(undefined);
       return;
     }
 
-    let valueToSet = '';
+    let valueToSet = "";
     let decimalsToSet = 0;
     switch (value) {
-      case 'USDC':
-        valueToSet = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'; // USDC Mint address
+      case "USDC":
+        valueToSet = "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"; // USDC Mint address
         decimalsToSet = 6;
         break;
-      case 'Tether':
-        valueToSet = 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB'
+      case "Tether":
+        valueToSet = "Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB";
         decimalsToSet = 6;
         break;
-      case 'Bonk':
-        valueToSet = 'DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263'
+      case "Bonk":
+        valueToSet = "DezXAZ8z7PnrnRJjz3wXBoRgixCa6xjnB7YaB1pPB263";
         decimalsToSet = 5;
         break;
-      case 'GOGS':
-        valueToSet = 'HxptKywiNbHobJD4XMMBn1czMUGkdMrUkeUErQLKbonk'
+      case "GOGS":
+        valueToSet = "HxptKywiNbHobJD4XMMBn1czMUGkdMrUkeUErQLKbonk";
         decimalsToSet = 6;
         break;
       default:
         // It's better to handle this case gracefully, e.g., by clearing the mapping
         // or simply not setting it if the value is unexpected (though the select should prevent this)
-        console.error('Invalid symbol selected:', value);
+        console.error("Invalid symbol selected:", value);
         setAssociatedMapping(undefined);
         return;
     }
@@ -813,24 +825,30 @@ function SendTokenSolana() {
 
   const handleApprove = useCallback(async () => {
     if (!publicKey) {
-      throw new Error('no Solana publicKey');
+      throw new Error("no Solana publicKey");
     }
 
     if (!selectedSymbol || !associatedMapping) {
-      setState({ status: 'error', error: new Error('Please select a token to approve.') });
+      setState({
+        status: "error",
+        error: new Error("Please select a token to approve."),
+      });
       return;
     }
 
     if (!destinationAddress) {
-      setState({ status: 'error', error: new Error('Please enter a destination address.') });
+      setState({
+        status: "error",
+        error: new Error("Please enter a destination address."),
+      });
       return;
     }
 
-    setState({ status: 'pending' });
+    setState({ status: "pending" });
     try {
       const { blockhash } = await solanaConnection.getLatestBlockhash();
       if (!blockhash) {
-        throw new Error('Failed to fetch the latest Solana blockhash.');
+        throw new Error("Failed to fetch the latest Solana blockhash.");
       }
 
       const transaction = new SolanaTransaction();
@@ -840,32 +858,37 @@ function SendTokenSolana() {
 
       // Calculate the amount to approve: 1000 tokens in smallest units
       const amountToApprove = 1000;
-      const amountInSmallestUnit = BigInt(Math.round(amountToApprove * Math.pow(10, associatedMapping.decimals)));
+      const amountInSmallestUnit = BigInt(
+        Math.round(amountToApprove * Math.pow(10, associatedMapping.decimals))
+      );
 
       if (amountInSmallestUnit <= 0) {
-        throw new Error("Calculated token amount to approve is zero or less. Check decimals and amount.");
+        throw new Error(
+          "Calculated token amount to approve is zero or less. Check decimals and amount."
+        );
       }
 
       // Get the owner's ATA for the token
       const ownerAta = await getAssociatedTokenAddress(
         tokenMintPublicKey,
-        publicKey,
+        publicKey
       );
 
       // Add the approve instruction
       transaction.add(
         createApproveInstruction(
-          ownerAta,             // Token account to approve from
-          spenderPublicKey,     // Account authorized to transfer tokens
-          publicKey,            // Owner of the token account
-          amountInSmallestUnit  // Amount to approve in smallest units
+          ownerAta, // Token account to approve from
+          spenderPublicKey, // Account authorized to transfer tokens
+          publicKey, // Owner of the token account
+          amountInSmallestUnit // Amount to approve in smallest units
         )
       );
 
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = new SolanaPublicKey(publicKey);
 
-      let finalTransaction: SolanaTransaction | VersionedTransaction = transaction;
+      let finalTransaction: SolanaTransaction | VersionedTransaction =
+        transaction;
 
       if (useVersionedTransaction) {
         // Create a v0 compatible message
@@ -877,23 +900,22 @@ function SendTokenSolana() {
 
         // Create a new VersionedTransaction
         finalTransaction = new VersionedTransaction(messageV0);
-        console.log('Created versioned transaction for approval');
+        console.log("Created versioned transaction for approval");
       }
 
-      console.log('Simulating approval transaction:', finalTransaction);
+      console.log("Simulating approval transaction:", finalTransaction);
       const signature = await sendTransaction(
         finalTransaction,
-        solanaConnection,
+        solanaConnection
       );
-      setState({ status: 'success', signature, type: 'approve' });
-      console.log('Approval transaction successful, signature:', signature);
-
+      setState({ status: "success", signature, type: "approve" });
+      console.log("Approval transaction successful, signature:", signature);
     } catch (e) {
       console.error("Approval transaction failed:", e);
       if (e instanceof Error) {
-        setState({ status: 'error', error: e });
+        setState({ status: "error", error: e });
       } else {
-        setState({ status: 'error', error: new Error(String(e)) });
+        setState({ status: "error", error: new Error(String(e)) });
       }
     }
   }, [
@@ -904,23 +926,26 @@ function SendTokenSolana() {
     destinationAddress,
     useVersionedTransaction,
     solanaConnection,
-  ])
+  ]);
 
   const handleSend = useCallback(async () => {
     if (!publicKey) {
-      throw new Error('no Solana publicKey');
+      throw new Error("no Solana publicKey");
     }
 
     if (!selectedSymbol || !associatedMapping) {
-      setState({ status: 'error', error: new Error('Please select a token to send.') });
+      setState({
+        status: "error",
+        error: new Error("Please select a token to send."),
+      });
       return;
     }
 
-    setState({ status: 'pending' });
+    setState({ status: "pending" });
     try {
       const { blockhash } = await solanaConnection.getLatestBlockhash();
       if (!blockhash) {
-        throw new Error('Failed to fetch the latest Solana blockhash.');
+        throw new Error("Failed to fetch the latest Solana blockhash.");
       }
 
       const transaction = new SolanaTransaction();
@@ -931,28 +956,34 @@ function SendTokenSolana() {
       // Calculate the amount in the smallest unit of the token
       // Sending 0.1 of the token
       const amountToSend = 0.1;
-      const amountInSmallestUnit = BigInt(Math.round(amountToSend * Math.pow(10, associatedMapping.decimals)));
+      const amountInSmallestUnit = BigInt(
+        Math.round(amountToSend * Math.pow(10, associatedMapping.decimals))
+      );
 
       if (amountInSmallestUnit <= 0) {
-        throw new Error("Calculated token amount to send is zero or less. Check decimals and amount.");
+        throw new Error(
+          "Calculated token amount to send is zero or less. Check decimals and amount."
+        );
       }
 
       // 1. Get the sender's ATA for the token
       const fromAta = await getAssociatedTokenAddress(
         tokenMintPublicKey,
-        publicKey,
+        publicKey
       );
 
       // 2. Get the recipient's ATA for the token
       const toAta = await getAssociatedTokenAddress(
         tokenMintPublicKey,
-        recipientPublicKey,
+        recipientPublicKey
       );
 
       // 3. Check if the recipient's ATA exists. If not, add an instruction to create it.
       const toAtaAccountInfo = await solanaConnection.getAccountInfo(toAta);
       if (!toAtaAccountInfo) {
-        console.log(`Recipient's Associated Token Account (${toAta.toBase58()}) for ${selectedSymbol} does not exist. Creating it.`);
+        console.log(
+          `Recipient's Associated Token Account (${toAta.toBase58()}) for ${selectedSymbol} does not exist. Creating it.`
+        );
         transaction.add(
           createAssociatedTokenAccountInstruction(
             publicKey,
@@ -967,11 +998,11 @@ function SendTokenSolana() {
       // 4. Add the token transfer instruction
       transaction.add(
         createTransferCheckedInstruction(
-          fromAta,                // Source_associated_token_account
-          tokenMintPublicKey,     // Token mint_address
-          toAta,                  // Destination_associated_token_account
-          publicKey,              // Wallet address of the owner of the source account
-          amountInSmallestUnit,   // Amount, in smallest units (e.g., lamports for SOL, or smallest unit for the token)
+          fromAta, // Source_associated_token_account
+          tokenMintPublicKey, // Token mint_address
+          toAta, // Destination_associated_token_account
+          publicKey, // Wallet address of the owner of the source account
+          amountInSmallestUnit, // Amount, in smallest units (e.g., lamports for SOL, or smallest unit for the token)
           associatedMapping.decimals // Decimals of the token (for validation)
           // [],                  // Optional: multiSigners
           // TOKEN_PROGRAM_ID     // Optional: SPL Token program ID, defaults correctly in recent library versions
@@ -991,7 +1022,8 @@ function SendTokenSolana() {
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = new SolanaPublicKey(publicKey);
 
-      let finalTransaction: SolanaTransaction | VersionedTransaction = transaction;
+      let finalTransaction: SolanaTransaction | VersionedTransaction =
+        transaction;
 
       if (useVersionedTransaction) {
         // Create a v0 compatible message
@@ -1003,10 +1035,10 @@ function SendTokenSolana() {
 
         // Create a new VersionedTransaction
         finalTransaction = new VersionedTransaction(messageV0);
-        console.log('Created versioned transaction');
+        console.log("Created versioned transaction");
       }
 
-      console.log('Simulating transaction:', finalTransaction);
+      console.log("Simulating transaction:", finalTransaction);
       const simulation = await solanaConnection.simulateTransaction(
         finalTransaction as VersionedTransaction
       );
@@ -1014,18 +1046,17 @@ function SendTokenSolana() {
 
       const signature = await sendTransaction(
         finalTransaction,
-        solanaConnection,
+        solanaConnection
       );
-      setState({ status: 'success', signature, type: 'send' });
-      console.log('Transaction successful, signature:', signature);
-
+      setState({ status: "success", signature, type: "send" });
+      console.log("Transaction successful, signature:", signature);
     } catch (e) {
       console.error("Transaction failed:", e);
       if (e instanceof Error) {
-        setState({ status: 'error', error: e });
+        setState({ status: "error", error: e });
       } else {
         // Handle cases where e is not an Error instance (e.g., string or object)
-        setState({ status: 'error', error: new Error(String(e)) });
+        setState({ status: "error", error: new Error(String(e)) });
       }
       // Removed `throw e;` as it might cause unhandled promise rejection if not caught upstream.
       // The state update is usually sufficient for UI feedback.
@@ -1041,11 +1072,15 @@ function SendTokenSolana() {
   ]);
 
   return (
-    <div className="p-4 max-w-md mx-auto space-y-4"> {/* Added some basic styling for layout */}
+    <div className="p-4 max-w-md mx-auto space-y-4">
+      {" "}
+      {/* Added some basic styling for layout */}
       <h2 className="text-xl font-semibold">Send Solana Transaction</h2>
-
       <div>
-        <label htmlFor="destination-address" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label
+          htmlFor="destination-address"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
           Destination Address
         </label>
         <input
@@ -1056,7 +1091,6 @@ function SendTokenSolana() {
           className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
         />
       </div>
-
       <div className="flex items-center gap-2">
         <input
           type="checkbox"
@@ -1065,13 +1099,18 @@ function SendTokenSolana() {
           onChange={(e) => setUseVersionedTransaction(e.target.checked)}
           className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded bg-white dark:bg-gray-900"
         />
-        <label htmlFor="use-versioned" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+        <label
+          htmlFor="use-versioned"
+          className="text-sm font-medium text-gray-700 dark:text-gray-300"
+        >
           Use Versioned Transaction
         </label>
       </div>
-
       <div>
-        <label htmlFor="token-select" className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+        <label
+          htmlFor="token-select"
+          className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1"
+        >
           Select Token
         </label>
         <select
@@ -1079,44 +1118,57 @@ function SendTokenSolana() {
           onChange={(e) => handleValueChange(e.target.value)}
           className="w-full bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100"
         >
-          {tokenOptions.map(option => (
-            <option key={option.value} value={option.value} disabled={option.disabled}>
+          {tokenOptions.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+            >
               {option.label}
             </option>
           ))}
         </select>
       </div>
-
       <div className="flex gap-2">
         <Button
           onClick={handleSend}
-          disabled={state.status === 'pending' || !selectedSymbol} // Disable if no token selected or pending
-          isLoading={state.status === 'pending'}
+          disabled={state.status === "pending" || !selectedSymbol} // Disable if no token selected or pending
+          isLoading={state.status === "pending"}
           className="flex-1" // Make button share width equally
         >
-          Send Token {selectedSymbol ? `(0.1 ${selectedSymbol})` : ''}
+          Send Token {selectedSymbol ? `(0.1 ${selectedSymbol})` : ""}
         </Button>
 
         <Button
           onClick={handleApprove}
-          disabled={state.status === 'pending' || !selectedSymbol} // Disable if no token selected or pending
-          isLoading={state.status === 'pending'}
+          disabled={state.status === "pending" || !selectedSymbol} // Disable if no token selected or pending
+          isLoading={state.status === "pending"}
           className="flex-1" // Make button share width equally
         >
-          Approve {selectedSymbol ? `(1000 ${selectedSymbol})` : ''}
+          Approve {selectedSymbol ? `(1000 ${selectedSymbol})` : ""}
         </Button>
       </div>
-
-      {state.status === 'none' && !selectedSymbol && (
+      {state.status === "none" && !selectedSymbol && (
         <div className="mt-2 text-xs text-gray-500">Please select a token.</div>
       )}
-      {state.status === 'error' && renderError(state.error)}
-      {state.status === 'success' && (
+      {state.status === "error" && renderError(state.error)}
+      {state.status === "success" && (
         <div className="mt-2 text-xs p-2 bg-green-50 border border-green-200 rounded">
           <div className="font-semibold text-green-700">
-            {state.type === 'approve' ? 'Approval' : 'Send'} Transaction Successful!
+            {state.type === "approve" ? "Approval" : "Send"} Transaction
+            Successful!
           </div>
-          <div>Signature: <a href={`https://explorer.solana.com/tx/${state.signature}?cluster=devnet`} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">{truncateAddress(state.signature)}</a></div>
+          <div>
+            Signature:{" "}
+            <a
+              href={`https://explorer.solana.com/tx/${state.signature}?cluster=devnet`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:underline"
+            >
+              {truncateAddress(state.signature)}
+            </a>
+          </div>
         </div>
       )}
       {simulation && (
@@ -1144,24 +1196,24 @@ function TestBatchOperation() {
 
   const handleGetCapabilities = useCallback(async () => {
     if (!walletClient || !address) {
-      setError('No wallet client or address');
+      setError("No wallet client or address");
       return;
     }
-    
+
     setIsGettingCapabilities(true);
     setError(null);
-    
+
     try {
       const capabilities = await walletClient.getCapabilities({
         account: address,
       });
       if (!capabilities) {
-        setError('No capabilities found');
+        setError("No capabilities found");
       } else {
         setCapabilities(JSON.stringify(capabilities, null, 2));
       }
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
+      setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setIsGettingCapabilities(false);
     }
@@ -1169,47 +1221,47 @@ function TestBatchOperation() {
 
   const handleSendCalls = useCallback(async () => {
     if (!walletClient || !address) {
-      setError('No wallet client or address');
+      setError("No wallet client or address");
       return;
     }
     switchChain({ chainId: base.id });
-    
+
     setIsSendingCalls(true);
     setError(null);
     setBatchCallId(null);
     setBatchCallResult(null);
-    
+
     try {
-      const { id } = await walletClient.sendCalls({ 
+      const { id } = await walletClient.sendCalls({
         account: address,
         forceAtomic,
         chain: base,
         calls: [
           {
-            to: '0x729170d38dd5449604f35f349fdfcc9ad08257cd',
-            value: parseEther('0.00002')
+            to: "0x729170d38dd5449604f35f349fdfcc9ad08257cd",
+            value: parseEther("0.00002"),
           },
           {
-            to: '0xf4319842934025823b461db1fa545d144833e84e',
-            value: parseEther('0.00002')
+            to: "0xf4319842934025823b461db1fa545d144833e84e",
+            value: parseEther("0.00002"),
           },
           {
-            to: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-            value: parseEther('0'),
-            data: '0xa9059cbb000000000000000000000000729170d38dd5449604f35f349fdfcc9ad08257cd0000000000000000000000000000000000000000000000000000000000002710'
+            to: "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
+            value: parseEther("0"),
+            data: "0xa9059cbb000000000000000000000000729170d38dd5449604f35f349fdfcc9ad08257cd0000000000000000000000000000000000000000000000000000000000002710",
           },
         ],
       });
       setBatchCallId(id);
-      
+
       const result = await walletClient.waitForCallsStatus({
         id,
         pollingInterval: 200,
       });
-      console.log('result', result);
+      console.log("result", result);
       setBatchCallResult(safeJsonStringify(result));
     } catch (e) {
-      setError(e instanceof Error ? e.message : 'Unknown error');
+      setError(e instanceof Error ? e.message : "Unknown error");
     } finally {
       setIsSendingCalls(false);
     }
@@ -1223,19 +1275,21 @@ function TestBatchOperation() {
             wallet.getCapabilities / wallet.sendCalls
           </pre>
         </div>
-        
+
         <div className="mb-4">
-          <Button 
+          <Button
             onClick={handleGetCapabilities}
             disabled={!isConnected || isGettingCapabilities}
             isLoading={isGettingCapabilities}
           >
             Get Capabilities
           </Button>
-          
+
           {capabilities && (
             <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-              <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">Capabilities</div>
+              <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">
+                Capabilities
+              </div>
               <pre className="font-mono text-xs whitespace-pre-wrap break-words max-w-[260px] overflow-x-">
                 {capabilities}
               </pre>
@@ -1252,12 +1306,15 @@ function TestBatchOperation() {
               onChange={(e) => setForceAtomic(e.target.checked)}
               className="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
             />
-            <label htmlFor="force-atomic" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+            <label
+              htmlFor="force-atomic"
+              className="text-sm font-medium text-gray-700 dark:text-gray-300"
+            >
               Force Atomic
             </label>
           </div>
-          
-          <Button 
+
+          <Button
             onClick={handleSendCalls}
             disabled={!isConnected || isSendingCalls}
             isLoading={isSendingCalls}
@@ -1267,23 +1324,21 @@ function TestBatchOperation() {
         </div>
 
         {batchCallId && (
-          <div className="mb-2 text-xs">
-            Batch Call ID: {batchCallId}
-          </div>
+          <div className="mb-2 text-xs">Batch Call ID: {batchCallId}</div>
         )}
 
         {batchCallResult && (
           <div className="mt-2 p-2 bg-gray-100 dark:bg-gray-800 rounded-lg">
-            <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">Batch Call Result</div>
+            <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">
+              Batch Call Result
+            </div>
             <pre className="font-mono text-xs whitespace-pre-wrap break-words max-w-[260px] overflow-x-">
               {batchCallResult}
             </pre>
           </div>
         )}
 
-        {error && (
-          <div className="text-red-500 text-xs mt-1">{error}</div>
-        )}
+        {error && <div className="text-red-500 text-xs mt-1">{error}</div>}
       </div>
     </>
   );
@@ -1291,25 +1346,25 @@ function TestBatchOperation() {
 
 function SendSolana() {
   const [state, setState] = useState<
-    | { status: 'none' }
-    | { status: 'pending' }
-    | { status: 'error'; error: Error }
-    | { status: 'success'; signature: string }
-  >({ status: 'none' });
+    | { status: "none" }
+    | { status: "pending" }
+    | { status: "error"; error: Error }
+    | { status: "success"; signature: string }
+  >({ status: "none" });
 
   const { connection: solanaConnection } = useSolanaConnection();
   const { sendTransaction, publicKey } = useSolanaWallet();
 
   const handleSend = useCallback(async () => {
-    setState({ status: 'pending' });
+    setState({ status: "pending" });
     try {
       if (!publicKey) {
-        throw new Error('no Solana publicKey');
+        throw new Error("no Solana publicKey");
       }
 
       const { blockhash } = await solanaConnection.getLatestBlockhash();
       if (!blockhash) {
-        throw new Error('failed to fetch latest Solana blockhash');
+        throw new Error("failed to fetch latest Solana blockhash");
       }
 
       const transaction = new SolanaTransaction();
@@ -1318,24 +1373,25 @@ function SendSolana() {
           fromPubkey: publicKey,
           toPubkey: new SolanaPublicKey(ashoatsPhantomSolanaWallet),
           lamports: 1n,
-        }),
+        })
       );
       transaction.recentBlockhash = blockhash;
       transaction.feePayer = publicKey;
 
-      const simulation =
-        await solanaConnection.simulateTransaction(transaction);
+      const simulation = await solanaConnection.simulateTransaction(
+        transaction
+      );
       if (simulation.value.err) {
-        throw new Error('Simulation failed');
+        throw new Error("Simulation failed");
       }
 
       const signature = await sendTransaction(transaction, solanaConnection);
-      setState({ status: 'success', signature });
+      setState({ status: "success", signature });
     } catch (e) {
       if (e instanceof Error) {
-        setState({ status: 'error', error: e });
+        setState({ status: "error", error: e });
       } else {
-        setState({ status: 'none' });
+        setState({ status: "none" });
       }
       throw e;
     }
@@ -1345,13 +1401,13 @@ function SendSolana() {
     <>
       <Button
         onClick={handleSend}
-        disabled={state.status === 'pending'}
-        isLoading={state.status === 'pending'}
+        disabled={state.status === "pending"}
+        isLoading={state.status === "pending"}
       >
         Send Transaction
       </Button>
-      {state.status === 'error' && renderError(state.error)}
-      {state.status === 'success' && (
+      {state.status === "error" && renderError(state.error)}
+      {state.status === "success" && (
         <div className="mt-2 text-xs">
           <div>Hash: {truncateAddress(state.signature)}</div>
         </div>
@@ -1360,7 +1416,13 @@ function SendSolana() {
   );
 }
 
-function QuickAuth({ setToken, token }: { setToken: (token: string | null) => void; token: string | null; }) {
+function QuickAuth({
+  setToken,
+  token,
+}: {
+  setToken: (token: string | null) => void;
+  token: string | null;
+}) {
   const [signingIn, setSigningIn] = useState(false);
   const [signInFailure, setSignInFailure] = useState<string>();
 
@@ -1374,14 +1436,14 @@ function QuickAuth({ setToken, token }: { setToken: (token: string | null) => vo
       setToken(token);
 
       // Demonstrate hitting an authed endpoint
-      const response = await fetch('/api/me', {
+      const response = await fetch("/api/me", {
         headers: {
-          Authorization: `Bearer ${token}`
-        }
+          Authorization: `Bearer ${token}`,
+        },
       });
 
       if (!response.ok) {
-        throw new Error('Network response was not ok');
+        throw new Error("Network response was not ok");
       }
 
       return;
@@ -1398,7 +1460,7 @@ function QuickAuth({ setToken, token }: { setToken: (token: string | null) => vo
   }, [setToken]);
 
   const handleSignOut = useCallback(async () => {
-    setToken(null)
+    setToken(null);
   }, [setToken]);
 
   return (
@@ -1409,20 +1471,20 @@ function QuickAuth({ setToken, token }: { setToken: (token: string | null) => vo
         </Button>
       )}
       {status === "authenticated" && (
-        <Button onClick={handleSignOut}>
-          Sign out
-        </Button>
+        <Button onClick={handleSignOut}>Sign out</Button>
       )}
       {token && (
         <>
           <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 dark:bg-gray-800 rounded-lg font-mono">
-            <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">Raw JWT</div>
-            <div className="whitespace-pre">
-              {token}
+            <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">
+              Raw JWT
             </div>
+            <div className="whitespace-pre">{token}</div>
           </div>
           <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 dark:bg-gray-800 rounded-lg font-mono">
-            <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">Decoded JWT</div>
+            <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">
+              Decoded JWT
+            </div>
             <div className="whitespace-pre">
               {JSON.stringify(jwtDecode(token), undefined, 2)}
             </div>
@@ -1431,7 +1493,9 @@ function QuickAuth({ setToken, token }: { setToken: (token: string | null) => vo
       )}
       {signInFailure && !signingIn && (
         <div className="my-2 p-2 text-xs overflow-x-scroll bg-gray-100 dark:bg-gray-800 rounded-lg font-mono">
-          <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">SIWF Result</div>
+          <div className="font-semibold text-gray-500 dark:text-gray-300 mb-1">
+            SIWF Result
+          </div>
           <div className="whitespace-pre">{signInFailure}</div>
         </div>
       )}
@@ -1481,17 +1545,18 @@ function OpenMiniApp() {
 
   const urlOptions = [
     { label: "Select a URL", value: "", disabled: true },
-    { 
-      label: "Bountycaster (Embed)", 
-      value: "https://www.bountycaster.xyz/bounty/0x392626b092e05955c11c41c5df8e2fb8003ece78" 
+    {
+      label: "Bountycaster (Embed)",
+      value:
+        "https://www.bountycaster.xyz/bounty/0x392626b092e05955c11c41c5df8e2fb8003ece78",
     },
-    { 
-      label: "Eggs (Launcher)", 
-      value: "https://farcaster.xyz/miniapps/Qqjy9efZ-1Qu/eggs" 
+    {
+      label: "Eggs (Launcher)",
+      value: "https://farcaster.xyz/miniapps/Qqjy9efZ-1Qu/eggs",
     },
-    { 
-      label: "Invalid URL", 
-      value: "https://swizec.com/" 
+    {
+      label: "Invalid URL",
+      value: "https://swizec.com/",
     },
   ];
 
@@ -1505,10 +1570,12 @@ function OpenMiniApp() {
     setOpenResult("");
 
     try {
-      await sdk.actions.openMiniApp({url: selectedUrl});
+      await sdk.actions.openMiniApp({ url: selectedUrl });
       setOpenResult("Mini app opened successfully");
     } catch (error) {
-      setOpenResult(`Error: ${error instanceof Error ? error.message : String(error)}`);
+      setOpenResult(
+        `Error: ${error instanceof Error ? error.message : String(error)}`
+      );
     } finally {
       setIsOpening(false);
     }
@@ -1529,8 +1596,12 @@ function OpenMiniApp() {
           onChange={(e) => setSelectedUrl(e.target.value)}
           className="w-full mb-2 p-2 bg-white dark:bg-gray-900 text-gray-900 dark:text-gray-100 border border-gray-300 dark:border-gray-700 rounded"
         >
-          {urlOptions.map(option => (
-            <option key={option.value} value={option.value} disabled={option.disabled}>
+          {urlOptions.map((option) => (
+            <option
+              key={option.value}
+              value={option.value}
+              disabled={option.disabled}
+            >
               {option.label}
             </option>
           ))}

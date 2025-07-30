@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/button";
+import { Button } from "./ui/Button";
 import { Progress } from "./ui/progress";
 import { Coins, TrendingUp, Users, Target, ExternalLink } from "lucide-react";
 
