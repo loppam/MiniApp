@@ -8,8 +8,8 @@ const TradoorApp = dynamic(() => import("~/components/TradoorApp"), {
   ssr: false,
 });
 
-export default function App() {
+export default function App({ title }: { title?: string }) {
   ReactDOM.preconnect("https://auth.farcaster.xyz");
 
-  return <TradoorApp />;
+  return <TradoorApp title={title} />;
 }

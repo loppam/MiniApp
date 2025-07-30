@@ -13,7 +13,9 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
 
-export default function TradoorApp() {
+export default function TradoorApp(
+  { title }: { title?: string } = { title: "Tradoor" }
+) {
   const [activeTab, setActiveTab] = useState("home");
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -71,7 +73,7 @@ export default function TradoorApp() {
       <div className="w-[300px] mx-auto py-4 px-2">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
-          <p className="text-sm text-muted-foreground">Loading Tradoor...</p>
+          <p className="text-sm text-muted-foreground">Loading {title}...</p>
         </div>
       </div>
     );
