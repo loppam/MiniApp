@@ -9,47 +9,15 @@ import {
   ArrowUpRight,
   Clock,
   CheckCircle,
+  Loader2,
 } from "lucide-react";
-
-interface Transaction {
-  id: string;
-  type: "buy" | "sell";
-  amount: number;
-  price: number;
-  timestamp: string;
-  points: number;
-  status: "completed" | "pending";
-}
-
-const mockTransactions: Transaction[] = [
-  {
-    id: "1",
-    type: "buy",
-    amount: 1000,
-    price: 0.045,
-    timestamp: "2024-01-15T10:30:00Z",
-    points: 5,
-    status: "completed",
-  },
-  {
-    id: "2",
-    type: "sell",
-    amount: 500,
-    price: 0.047,
-    timestamp: "2024-01-15T14:20:00Z",
-    points: 5,
-    status: "completed",
-  },
-  {
-    id: "3",
-    type: "buy",
-    amount: 2000,
-    price: 0.044,
-    timestamp: "2024-01-15T16:45:00Z",
-    points: 5,
-    status: "pending",
-  },
-];
+import { useAccount } from "wagmi";
+import {
+  useUserProfile,
+  useTransactions,
+  useTrading,
+} from "~/hooks/useFirebase";
+import { Timestamp } from "firebase/firestore";
 
 const rankTiers = [
   {
@@ -90,22 +58,84 @@ const rankTiers = [
 ];
 
 export function RankUpTransactions() {
-  const userPoints = 2750;
-  const userPtradoorBalance = 5250;
+  const { address } = useAccount();
+  const {
+    profile,
+    loading: profileLoading,
+    error: profileError,
+  } = useUserProfile(address);
+  const {
+    transactions,
+    loading: txLoading,
+    error: txError,
+  } = useTransactions(address, 10);
+  const { executeTrade } = useTrading();
+
+  const formatTime = (timestamp: Timestamp | Date | string | null | undefined) => {
+    if (!timestamp) return "Unknown";
+    const date = timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+    return date.toLocaleString();
+  };
+
+  const handleTrade = async (type: "buy" | "sell", amount: number) => {
+    if (!address) return;
+
+    try {
+      await executeTrade(type, amount, 0.045); // Mock price
+    } catch (error) {
+      console.error("Trade failed:", error);
+    }
+  };
+
+  if (profileLoading || txLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">
+          Loading trading data...
+        </span>
+      </div>
+    );
+  }
+
+  if (profileError || txError) {
+    return (
+      <div className="text-center py-4">
+        <div className="text-sm text-red-500 mb-2">
+          Failed to load trading data
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {profileError || txError}
+        </div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="text-center py-4">
+        <div className="text-sm text-muted-foreground">No profile found</div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Connect your wallet to start trading
+        </div>
+      </div>
+    );
+  }
+
   const currentTier = rankTiers.find(
-    (tier) => userPoints >= tier.minPoints && userPoints < tier.maxPoints
+    (tier) =>
+      profile.totalPoints >= tier.minPoints &&
+      profile.totalPoints < tier.maxPoints
   );
-  const nextTier = rankTiers.find((tier) => tier.minPoints > userPoints);
+  const nextTier = rankTiers.find(
+    (tier) => tier.minPoints > profile.totalPoints
+  );
 
   const progressToNext = nextTier
-    ? ((userPoints - currentTier!.minPoints) /
+    ? ((profile.totalPoints - currentTier!.minPoints) /
         (nextTier.minPoints - currentTier!.minPoints)) *
       100
     : 100;
-
-  const formatTime = (timestamp: string) => {
-    return new Date(timestamp).toLocaleString();
-  };
 
   return (
     <div className="space-y-4">
@@ -131,13 +161,13 @@ export function RankUpTransactions() {
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">Points</span>
                 <span className="text-sm font-bold">
-                  {userPoints.toLocaleString()}
+                  {profile.totalPoints.toLocaleString()}
                 </span>
               </div>
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">pTradoor</span>
                 <span className="text-sm font-bold">
-                  {Math.round(userPtradoorBalance / 1000)}K
+                  {Math.round(profile.ptradoorBalance / 1000)}K
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -179,7 +209,10 @@ export function RankUpTransactions() {
                     <Progress value={progressToNext} className="h-1.5" />
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {(nextTier.minPoints - userPoints).toLocaleString()} more
+                    {(
+                      nextTier.minPoints - profile.totalPoints
+                    ).toLocaleString()}{" "}
+                    more
                   </div>
                 </>
               ) : (
@@ -211,6 +244,7 @@ export function RankUpTransactions() {
               <Button
                 size="sm"
                 className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
+                onClick={() => handleTrade("buy", 100)}
               >
                 Buy (+5 pts)
               </Button>
@@ -224,6 +258,7 @@ export function RankUpTransactions() {
               <Button
                 size="sm"
                 className="w-full bg-red-600 hover:bg-red-700 text-white text-xs"
+                onClick={() => handleTrade("sell", 100)}
               >
                 Sell (+5 pts)
               </Button>
@@ -245,41 +280,55 @@ export function RankUpTransactions() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {mockTransactions.map((transaction) => (
-              <div
-                key={transaction.id}
-                className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border"
-              >
-                <div className="flex items-center gap-3">
-                  {transaction.status === "completed" ? (
-                    <CheckCircle className="h-5 w-5 text-green-500" />
-                  ) : (
-                    <Clock className="h-5 w-5 text-yellow-500" />
-                  )}
-                  <div>
-                    <div className="font-medium">
-                      {transaction.type.toUpperCase()}{" "}
-                      {transaction.amount.toLocaleString()} pTRADOOR
-                    </div>
-                    <div className="text-sm text-muted-foreground">
-                      ${transaction.price} • {formatTime(transaction.timestamp)}
-                    </div>
-                  </div>
+            {transactions.length === 0 ? (
+              <div className="text-center py-4">
+                <div className="text-sm text-muted-foreground">
+                  No transactions yet
                 </div>
-                <div className="text-right">
-                  <div className="font-bold text-green-500">
-                    +{transaction.points} pts
-                  </div>
-                  <Badge
-                    variant={
-                      transaction.status === "completed" ? "default" : "outline"
-                    }
-                  >
-                    {transaction.status}
-                  </Badge>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Start trading to see your history
                 </div>
               </div>
-            ))}
+            ) : (
+              transactions.map((transaction) => (
+                <div
+                  key={transaction.id}
+                  className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border"
+                >
+                  <div className="flex items-center gap-3">
+                    {transaction.status === "completed" ? (
+                      <CheckCircle className="h-5 w-5 text-green-500" />
+                    ) : (
+                      <Clock className="h-5 w-5 text-yellow-500" />
+                    )}
+                    <div>
+                      <div className="font-medium">
+                        {transaction.type.toUpperCase()}{" "}
+                        {transaction.amount.toLocaleString()} pTRADOOR
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        ${transaction.price || 0} •{" "}
+                        {formatTime(transaction.timestamp)}
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="font-bold text-green-500">
+                      +{transaction.points} pts
+                    </div>
+                    <Badge
+                      variant={
+                        transaction.status === "completed"
+                          ? "default"
+                          : "outline"
+                      }
+                    >
+                      {transaction.status}
+                    </Badge>
+                  </div>
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>

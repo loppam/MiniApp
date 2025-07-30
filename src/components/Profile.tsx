@@ -14,58 +14,12 @@ import {
   Share2,
   Settings,
   ExternalLink,
+  Loader2,
 } from "lucide-react";
+import { useAccount } from "wagmi";
+import { useUserProfile, useAchievements } from "~/hooks/useFirebase";
 
-interface Achievement {
-  id: string;
-  name: string;
-  description: string;
-  icon: string;
-  unlockedAt: string;
-  rarity: "common" | "rare" | "epic" | "legendary";
-}
-
-const mockAchievements: Achievement[] = [
-  {
-    id: "1",
-    name: "First Trade",
-    description: "Complete your first pTradoor transaction",
-    icon: "🎯",
-    unlockedAt: "2024-01-10T09:00:00Z",
-    rarity: "common",
-  },
-  {
-    id: "2",
-    name: "Active Trader",
-    description: "Complete 10 transactions in one day",
-    icon: "⚡",
-    unlockedAt: "2024-01-12T15:30:00Z",
-    rarity: "rare",
-  },
-  {
-    id: "3",
-    name: "HODL Master",
-    description: "Hold pTradoor for 30 consecutive days",
-    icon: "💎",
-    unlockedAt: "2024-01-14T12:00:00Z",
-    rarity: "epic",
-  },
-];
-
-const userStats = {
-  address: "0x742d35Cc6634C0532925a3b8D0bE6038C38e3c",
-  joinDate: "2024-01-10",
-  totalPoints: 2750,
-  currentRank: 156,
-  totalTransactions: 47,
-  ptradoorBalance: 5250,
-  ptradoorEarned: 8900,
-  weeklyStreak: 12,
-  tier: "Silver",
-  referrals: 3,
-};
-
-const getRarityColor = (rarity: Achievement["rarity"]) => {
+const getRarityColor = (rarity: string) => {
   switch (rarity) {
     case "common":
       return "text-gray-400 bg-gray-400/10 border-gray-400/20";
@@ -75,17 +29,86 @@ const getRarityColor = (rarity: Achievement["rarity"]) => {
       return "text-purple-500 bg-purple-500/10 border-purple-500/20";
     case "legendary":
       return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
+    default:
+      return "text-gray-400 bg-gray-400/10 border-gray-400/20";
   }
 };
 
 export function Profile() {
-  const formatAddress = (address: string) => {
-    return `${address.slice(0, 6)}...${address.slice(-4)}`;
+  const { address } = useAccount();
+  const { profile, loading, error } = useUserProfile(address);
+  const {
+    achievements,
+    userAchievements,
+    loading: achLoading,
+    error: achError,
+  } = useAchievements(address);
+
+  const formatAddress = (address: string) =>
+    `${address.slice(0, 6)}...${address.slice(-4)}`;
+
+  const formatDate = (dateString: string) =>
+    new Date(dateString).toLocaleDateString();
+
+  if (loading || achLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">
+          Loading profile...
+        </span>
+      </div>
+    );
+  }
+
+  if (error || achError) {
+    return (
+      <div className="text-center py-4">
+        <div className="text-sm text-red-500 mb-2">Failed to load profile</div>
+        <div className="text-xs text-muted-foreground">{error || achError}</div>
+      </div>
+    );
+  }
+
+  if (!profile) {
+    return (
+      <div className="text-center py-4">
+        <div className="text-sm text-muted-foreground">No profile found</div>
+        <div className="text-xs text-muted-foreground mt-1">
+          Connect your wallet to view your profile
+        </div>
+      </div>
+    );
+  }
+
+  const nextTierPoints = {
+    Bronze: 1000,
+    Silver: 5000,
+    Gold: 15000,
+    Platinum: 50000,
+    Diamond: Infinity,
   };
 
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleDateString();
+  const currentTierPoints = {
+    Bronze: 0,
+    Silver: 1000,
+    Gold: 5000,
+    Platinum: 15000,
+    Diamond: 50000,
   };
+
+  const nextTier = Object.entries(nextTierPoints).find(
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    ([tier, points]) => profile.totalPoints < points
+  );
+
+  const progressToNext = nextTier
+    ? ((profile.totalPoints -
+        currentTierPoints[profile.tier as keyof typeof currentTierPoints]) /
+        (nextTierPoints[nextTier[0] as keyof typeof nextTierPoints] -
+          currentTierPoints[profile.tier as keyof typeof currentTierPoints])) *
+      100
+    : 100;
 
   return (
     <div className="space-y-4">
@@ -101,25 +124,27 @@ export function Profile() {
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
               <AvatarFallback className="bg-primary/10 text-primary">
-                {userStats.address.slice(2, 4).toUpperCase()}
+                {profile.address.slice(2, 4).toUpperCase()}
               </AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-sm font-bold">
-                  {formatAddress(userStats.address)}
+                  {formatAddress(profile.address)}
                 </h3>
                 <Badge className="bg-gray-400/10 text-gray-400 border-gray-400/20 text-xs px-1.5 py-0">
-                  {userStats.tier}
+                  {profile.tier}
                 </Badge>
               </div>
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {formatDate(userStats.joinDate)}
+                  {profile.joinDate
+                    ? formatDate(profile.joinDate.toDate().toISOString())
+                    : "Recently joined"}
                 </span>
                 <span className="flex items-center gap-1">
-                  <Trophy className="h-3 w-3" />#{userStats.currentRank}
+                  <Trophy className="h-3 w-3" />#{profile.currentRank}
                 </span>
               </div>
             </div>
@@ -147,20 +172,16 @@ export function Profile() {
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Total</span>
               <span className="text-sm font-bold text-green-500">
-                {userStats.totalPoints.toLocaleString()}
+                {profile.totalPoints.toLocaleString()}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Rank</span>
-              <span className="text-sm font-bold">
-                #{userStats.currentRank}
-              </span>
+              <span className="text-sm font-bold">#{profile.currentRank}</span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Streak</span>
-              <span className="text-sm font-bold">
-                {userStats.weeklyStreak}d
-              </span>
+              <span className="text-sm font-bold">{profile.weeklyStreak}d</span>
             </div>
           </CardContent>
         </Card>
@@ -178,7 +199,7 @@ export function Profile() {
                 Transactions
               </span>
               <span className="text-sm font-bold">
-                {userStats.totalTransactions}
+                {profile.totalTransactions}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -187,7 +208,7 @@ export function Profile() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Referrals</span>
-              <span className="text-sm font-bold">{userStats.referrals}</span>
+              <span className="text-sm font-bold">{profile.referrals}</span>
             </div>
           </CardContent>
         </Card>
@@ -202,19 +223,19 @@ export function Profile() {
           <CardContent className="grid grid-cols-3 gap-4">
             <div className="text-center">
               <div className="text-sm font-bold">
-                {Math.round(userStats.ptradoorBalance / 1000)}K
+                {Math.round(profile.ptradoorBalance / 1000)}K
               </div>
               <div className="text-xs text-muted-foreground">Balance</div>
             </div>
             <div className="text-center">
               <div className="text-sm font-bold">
-                {Math.round(userStats.ptradoorEarned / 1000)}K
+                {Math.round(profile.ptradoorEarned / 1000)}K
               </div>
               <div className="text-xs text-muted-foreground">Earned</div>
             </div>
             <div className="text-center">
               <div className="text-sm font-bold text-green-500">
-                +{Math.floor(userStats.ptradoorBalance * 0.001)}
+                +{Math.floor(profile.ptradoorBalance * 0.001)}
               </div>
               <div className="text-xs text-muted-foreground">Daily</div>
             </div>
@@ -231,29 +252,45 @@ export function Profile() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {mockAchievements.slice(0, 3).map((achievement) => (
-              <div
-                key={achievement.id}
-                className="flex items-center gap-2 p-2 rounded-lg bg-accent/30 border border-border"
-              >
-                <div className="text-lg">{achievement.icon}</div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-0.5">
-                    <h4 className="text-sm font-medium">{achievement.name}</h4>
-                    <Badge
-                      className={`${getRarityColor(
-                        achievement.rarity
-                      )} text-xs px-1.5 py-0`}
-                    >
-                      {achievement.rarity}
-                    </Badge>
+            {achievements
+              .filter((a) => userAchievements.includes(a.id))
+              .slice(0, 3)
+              .map((achievement) => (
+                <div
+                  key={achievement.id}
+                  className="flex items-center gap-2 p-2 rounded-lg bg-accent/30 border border-border"
+                >
+                  <div className="text-lg">{achievement.icon}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-0.5">
+                      <h4 className="text-sm font-medium">
+                        {achievement.name}
+                      </h4>
+                      <Badge
+                        className={`${getRarityColor(
+                          achievement.rarity
+                        )} text-xs px-1.5 py-0`}
+                      >
+                        {achievement.rarity}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {achievement.description}
+                    </p>
                   </div>
-                  <p className="text-xs text-muted-foreground">
-                    {formatDate(achievement.unlockedAt)}
-                  </p>
+                </div>
+              ))}
+            {achievements.filter((a) => userAchievements.includes(a.id))
+              .length === 0 && (
+              <div className="text-center py-4">
+                <div className="text-sm text-muted-foreground">
+                  No achievements yet
+                </div>
+                <div className="text-xs text-muted-foreground mt-1">
+                  Complete trades to unlock achievements
                 </div>
               </div>
-            ))}
+            )}
           </div>
         </CardContent>
       </Card>
@@ -266,35 +303,41 @@ export function Profile() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="space-y-1">
-            <div className="flex justify-between items-center">
-              <span className="text-sm font-medium">Reach Gold Tier</span>
-              <span className="text-xs text-muted-foreground">
-                {Math.round((userStats.totalPoints / 5000) * 100)}%
-              </span>
+          {nextTier && (
+            <div className="space-y-1">
+              <div className="flex justify-between items-center">
+                <span className="text-sm font-medium">
+                  Reach {nextTier[0]} Tier
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {Math.round(progressToNext)}%
+                </span>
+              </div>
+              <Progress value={progressToNext} className="h-1.5" />
+              <p className="text-xs text-muted-foreground">
+                {(
+                  nextTierPoints[nextTier[0] as keyof typeof nextTierPoints] -
+                  profile.totalPoints
+                ).toLocaleString()}{" "}
+                more points needed
+              </p>
             </div>
-            <Progress
-              value={(userStats.totalPoints / 5000) * 100}
-              className="h-1.5"
-            />
-            <p className="text-xs text-muted-foreground">
-              {5000 - userStats.totalPoints} more points needed
-            </p>
-          </div>
+          )}
 
           <div className="space-y-1">
             <div className="flex justify-between items-center">
               <span className="text-sm font-medium">100 Transactions</span>
               <span className="text-xs text-muted-foreground">
-                {Math.round((userStats.totalTransactions / 100) * 100)}%
+                {Math.round((profile.totalTransactions / 100) * 100)}%
               </span>
             </div>
             <Progress
-              value={(userStats.totalTransactions / 100) * 100}
+              value={(profile.totalTransactions / 100) * 100}
               className="h-1.5"
             />
             <p className="text-xs text-muted-foreground">
-              {100 - userStats.totalTransactions} more transactions needed
+              {Math.max(0, 100 - profile.totalTransactions)} more transactions
+              needed
             </p>
           </div>
         </CardContent>

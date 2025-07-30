@@ -1,86 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Trophy, Medal, Award } from "lucide-react";
-
-interface LeaderboardEntry {
-  rank: number;
-  address: string;
-  points: number;
-  transactions: number;
-  ptradoorBalance: number;
-}
-
-const mockLeaderboardData: LeaderboardEntry[] = [
-  {
-    rank: 1,
-    address: "0x742d35Cc6634C0532925a3b8D0bE6038C38e3c",
-    points: 15420,
-    transactions: 847,
-    ptradoorBalance: 12500,
-  },
-  {
-    rank: 2,
-    address: "0x8ba1f109551bD432803012645Hac189451c143",
-    points: 14230,
-    transactions: 723,
-    ptradoorBalance: 9800,
-  },
-  {
-    rank: 3,
-    address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4CE",
-    points: 12890,
-    transactions: 612,
-    ptradoorBalance: 8700,
-  },
-  {
-    rank: 4,
-    address: "0x742d35Cc6634C0532925a3b8D0bE6038C38e34",
-    points: 11560,
-    transactions: 534,
-    ptradoorBalance: 7200,
-  },
-  {
-    rank: 5,
-    address: "0x8ba1f109551bD432803012645Hac189451c145",
-    points: 10890,
-    transactions: 478,
-    ptradoorBalance: 6500,
-  },
-  {
-    rank: 6,
-    address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4CF",
-    points: 9650,
-    transactions: 423,
-    ptradoorBalance: 5800,
-  },
-  {
-    rank: 7,
-    address: "0x742d35Cc6634C0532925a3b8D0bE6038C38e35",
-    points: 8920,
-    transactions: 387,
-    ptradoorBalance: 4900,
-  },
-  {
-    rank: 8,
-    address: "0x8ba1f109551bD432803012645Hac189451c147",
-    points: 8230,
-    transactions: 352,
-    ptradoorBalance: 4200,
-  },
-  {
-    rank: 9,
-    address: "0x95aD61b0a150d79219dCF64E1E6Cc01f0B64C4D0",
-    points: 7580,
-    transactions: 318,
-    ptradoorBalance: 3600,
-  },
-  {
-    rank: 10,
-    address: "0x742d35Cc6634C0532925a3b8D0bE6038C38e36",
-    points: 6890,
-    transactions: 289,
-    ptradoorBalance: 3100,
-  },
-];
+import { Trophy, Medal, Award, Loader2 } from "lucide-react";
+import { useLeaderboard } from "~/hooks/useFirebase";
 
 const getRankIcon = (rank: number) => {
   switch (rank) {
@@ -99,11 +19,12 @@ const getRankIcon = (rank: number) => {
   }
 };
 
-const formatAddress = (address: string) => {
-  return `${address.slice(0, 6)}...${address.slice(-4)}`;
-};
+const formatAddress = (address: string) =>
+  `${address.slice(0, 6)}...${address.slice(-4)}`;
 
 export function Leaderboard() {
+  const { leaderboard, loading, error } = useLeaderboard(10);
+
   return (
     <div className="space-y-4">
       <div className="text-center space-y-1">
@@ -121,34 +42,62 @@ export function Leaderboard() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="space-y-2">
-            {mockLeaderboardData.slice(0, 8).map((entry) => (
-              <div
-                key={entry.rank}
-                className="flex items-center justify-between p-2 rounded-lg bg-accent/30 border border-border"
-              >
-                <div className="flex items-center gap-2">
-                  {getRankIcon(entry.rank)}
-                  <div>
-                    <div className="text-sm font-medium text-foreground">
-                      {formatAddress(entry.address)}
+          {loading && (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              <span className="ml-2 text-sm text-muted-foreground">
+                Loading leaderboard...
+              </span>
+            </div>
+          )}
+
+          {error && (
+            <div className="text-center py-4">
+              <div className="text-sm text-red-500 mb-2">
+                Failed to load leaderboard
+              </div>
+              <div className="text-xs text-muted-foreground">{error}</div>
+            </div>
+          )}
+
+          {!loading && !error && leaderboard.length === 0 && (
+            <div className="text-center py-4">
+              <div className="text-sm text-muted-foreground">
+                No leaderboard data available
+              </div>
+            </div>
+          )}
+
+          {!loading && !error && leaderboard.length > 0 && (
+            <div className="space-y-2">
+              {leaderboard.slice(0, 8).map((entry, idx) => (
+                <div
+                  key={entry.userAddress}
+                  className="flex items-center justify-between p-2 rounded-lg bg-accent/30 border border-border"
+                >
+                  <div className="flex items-center gap-2">
+                    {getRankIcon(idx + 1)}
+                    <div>
+                      <div className="text-sm font-medium text-foreground">
+                        {formatAddress(entry.userAddress)}
+                      </div>
+                      <div className="text-xs text-muted-foreground">
+                        {entry.transactions} txns
+                      </div>
+                    </div>
+                  </div>
+                  <div className="text-right">
+                    <div className="text-sm font-bold text-foreground">
+                      {Math.round(entry.points / 1000)}K
                     </div>
                     <div className="text-xs text-muted-foreground">
-                      {entry.transactions} txns
+                      #{idx + 1}
                     </div>
                   </div>
                 </div>
-                <div className="text-right">
-                  <div className="text-sm font-bold text-foreground">
-                    {Math.round(entry.points / 1000)}K
-                  </div>
-                  <div className="text-xs text-muted-foreground">
-                    #{entry.rank}
-                  </div>
-                </div>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

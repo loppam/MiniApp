@@ -2,27 +2,51 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/Button";
 import { Progress } from "./ui/progress";
-import { Coins, TrendingUp, Users, Target, ExternalLink } from "lucide-react";
+import {
+  Coins,
+  TrendingUp,
+  Users,
+  Target,
+  ExternalLink,
+  Loader2,
+} from "lucide-react";
+import { usePlatformStats, useMilestones } from "~/hooks/useFirebase";
 
 export function ProjectInfo() {
-  const projectStats = {
-    totalUsers: 2847,
-    totalTransactions: 45123,
-    totalPoints: 890432,
-    ptradoorSupply: 1000000,
-    ptradoorCirculating: 245000,
-  };
+  const {
+    stats,
+    loading: statsLoading,
+    error: statsError,
+  } = usePlatformStats();
+  const {
+    milestones,
+    loading: milestoneLoading,
+    error: milestoneError,
+  } = useMilestones();
 
-  const milestones = [
-    { name: "pTradoor Launch", completed: true, target: 1000, current: 2847 },
-    {
-      name: "50K Transactions",
-      completed: false,
-      target: 50000,
-      current: 45123,
-    },
-    { name: "Tradoor Token", completed: false, target: 100000, current: 45123 },
-  ];
+  if (statsLoading || milestoneLoading) {
+    return (
+      <div className="flex items-center justify-center py-8">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <span className="ml-2 text-sm text-muted-foreground">
+          Loading project stats...
+        </span>
+      </div>
+    );
+  }
+
+  if (statsError || milestoneError) {
+    return (
+      <div className="text-center py-4">
+        <div className="text-sm text-red-500 mb-2">
+          Failed to load project data
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {statsError || milestoneError}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -45,7 +69,7 @@ export function ProjectInfo() {
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Users</span>
               <span className="text-sm font-bold">
-                {projectStats.totalUsers.toLocaleString()}
+                {stats?.totalUsers.toLocaleString() || "0"}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -53,13 +77,13 @@ export function ProjectInfo() {
                 Transactions
               </span>
               <span className="text-sm font-bold">
-                {projectStats.totalTransactions.toLocaleString()}
+                {stats?.totalTransactions.toLocaleString() || "0"}
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Points</span>
               <span className="text-sm font-bold">
-                {Math.round(projectStats.totalPoints / 1000)}K
+                {stats ? Math.round(stats.totalPoints / 1000) : 0}K
               </span>
             </div>
           </CardContent>
@@ -76,32 +100,32 @@ export function ProjectInfo() {
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Supply</span>
               <span className="text-sm font-bold">
-                {projectStats.ptradoorSupply / 1000}K
+                {stats ? stats.ptradoorSupply / 1000 : 0}K
               </span>
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Circulating</span>
               <span className="text-sm font-bold">
-                {Math.round(projectStats.ptradoorCirculating / 1000)}K
+                {stats ? Math.round(stats.ptradoorCirculating / 1000) : 0}K
               </span>
             </div>
             <div className="space-y-1">
               <div className="flex justify-between text-xs">
                 <span>Distribution</span>
                 <span>
-                  {Math.round(
-                    (projectStats.ptradoorCirculating /
-                      projectStats.ptradoorSupply) *
-                      100
-                  )}
+                  {stats
+                    ? Math.round(
+                        (stats.ptradoorCirculating / stats.ptradoorSupply) * 100
+                      )
+                    : 0}
                   %
                 </span>
               </div>
               <Progress
                 value={
-                  (projectStats.ptradoorCirculating /
-                    projectStats.ptradoorSupply) *
-                  100
+                  stats
+                    ? (stats.ptradoorCirculating / stats.ptradoorSupply) * 100
+                    : 0
                 }
                 className="h-1.5"
               />
@@ -118,30 +142,40 @@ export function ProjectInfo() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          {milestones.map((milestone, index) => (
-            <div key={index} className="space-y-1">
-              <div className="flex justify-between items-center">
-                <div className="flex items-center gap-2">
-                  <span className="text-sm font-medium">{milestone.name}</span>
-                  {milestone.completed && (
-                    <Badge
-                      variant="default"
-                      className="bg-green-500/10 text-green-500 border-green-500/20 text-xs px-1.5 py-0"
-                    >
-                      ✓
-                    </Badge>
-                  )}
-                </div>
-                <span className="text-xs text-muted-foreground">
-                  {Math.round((milestone.current / milestone.target) * 100)}%
-                </span>
+          {milestones.length === 0 ? (
+            <div className="text-center py-4">
+              <div className="text-sm text-muted-foreground">
+                No milestones available
               </div>
-              <Progress
-                value={(milestone.current / milestone.target) * 100}
-                className="h-1.5"
-              />
             </div>
-          ))}
+          ) : (
+            milestones.map((milestone) => (
+              <div key={milestone.id} className="space-y-1">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium">
+                      {milestone.name}
+                    </span>
+                    {milestone.completed && (
+                      <Badge
+                        variant="default"
+                        className="bg-green-500/10 text-green-500 border-green-500/20 text-xs px-1.5 py-0"
+                      >
+                        ✓
+                      </Badge>
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground">
+                    {Math.round((milestone.current / milestone.target) * 100)}%
+                  </span>
+                </div>
+                <Progress
+                  value={(milestone.current / milestone.target) * 100}
+                  className="h-1.5"
+                />
+              </div>
+            ))
+          )}
         </CardContent>
       </Card>
 

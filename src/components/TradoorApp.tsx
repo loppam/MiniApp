@@ -12,24 +12,35 @@ import sdk, { type Context } from "@farcaster/miniapp-sdk";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
+import { useUserAuth, useUserProfile } from "~/hooks/useFirebase";
 
 export default function TradoorApp(
   { title }: { title?: string } = { title: "Tradoor" }
 ) {
   const [activeTab, setActiveTab] = useState("home");
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const [context, setContext] = useState<Context.MiniAppContext>();
+  const [, setContext] = useState<Context.MiniAppContext>();
 
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
   const { disconnect } = useDisconnect();
 
-  // Initialize Mini App SDK
+  // Firebase hooks
+  const { initializeUser } = useUserAuth();
+  const { profile: userProfile } = useUserProfile(address);
+
+  // Initialize Mini App SDK and Firebase user
   useEffect(() => {
     const load = async () => {
       try {
-        setContext(await sdk.context);
+        const sdkContext = await sdk.context;
+        setContext(sdkContext);
+
+        // Initialize Firebase user if connected
+        if (address && isConnected) {
+          await initializeUser(sdkContext);
+        }
+
         sdk.actions.ready();
         setIsSDKLoaded(true);
       } catch (error) {
@@ -41,13 +52,14 @@ export default function TradoorApp(
     if (sdk && !isSDKLoaded) {
       load();
     }
-  }, [isSDKLoaded]);
+  }, [isSDKLoaded, address, isConnected, initializeUser]);
 
+  // Use Firebase profile data or fallback to mock data
   const userStats = {
     address: address || "0xnotconnected",
-    points: 2750,
-    rank: 156,
-    tier: "Silver",
+    points: userProfile?.totalPoints || 2750,
+    rank: userProfile?.currentRank || 156,
+    tier: userProfile?.tier || "Silver",
   };
 
   const formatAddress = (address: string) => {
