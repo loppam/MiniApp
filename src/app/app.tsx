@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import ReactDOM from "react-dom";
+import "./globals.css";
 
 const TradoorApp = dynamic(() => import("~/components/TradoorApp"), {
   ssr: false,
