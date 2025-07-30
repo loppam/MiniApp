@@ -31,5 +31,5 @@ export const metadata: Metadata = {
 };
 
 export default function HelloFrame() {
-  return <App title={"Hello, world!"} />;
+  return <App />;
 }
