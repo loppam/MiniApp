@@ -179,11 +179,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     console.log("Request details:", { address, action, hasData: !!data });
 
     // Validate required fields
-    if (!address || !message || !signature || !action) {
+    if (!address || !action) {
       console.error("Missing required fields:", {
         address: !!address,
-        message: !!message,
-        signature: !!signature,
         action: !!action,
       });
       return NextResponse.json(
@@ -197,6 +195,40 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       console.error("Invalid address format:", address);
       return NextResponse.json(
         { success: false, error: "Invalid address format" },
+        { status: 400 }
+      );
+    }
+
+    // Special case for initial user creation - skip signature verification
+    if (action === "initializeUser") {
+      console.log(
+        "Initializing user without signature verification (first-time user)"
+      );
+
+      // Handle the Firestore action
+      console.log("Handling Firestore action:", action);
+      const result = await handleFirestoreAction(address, action, data || {});
+      console.log("Firestore action result:", result);
+
+      if (result.success) {
+        return NextResponse.json(result);
+      } else {
+        console.error("Firestore action failed:", result.error);
+        return NextResponse.json(
+          { success: false, error: result.error },
+          { status: 400 }
+        );
+      }
+    }
+
+    // For all other actions, require signature verification
+    if (!message || !signature) {
+      console.error("Missing signature fields for non-initialization action:", {
+        message: !!message,
+        signature: !!signature,
+      });
+      return NextResponse.json(
+        { success: false, error: "Missing signature fields" },
         { status: 400 }
       );
     }

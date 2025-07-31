@@ -28,11 +28,68 @@ async function makeSecureRequest(
 
     try {
       console.log("Signing message with Farcaster SDK:", message);
-      // Use Farcaster SDK's ethProvider for signing
-      const signedMessage = await sdk.wallet.ethProvider.request({
-        method: "eth_sign",
-        params: [address as `0x${string}`, message],
-      });
+
+      // Try different signing methods that might be supported by Farcaster Wallet
+      let signedMessage;
+
+      try {
+        // Try personal_sign first (most common)
+        signedMessage = await sdk.wallet.ethProvider.request({
+          method: "personal_sign",
+          params: [message as `0x${string}`, address as `0x${string}`],
+        });
+        console.log("Message signed successfully with personal_sign");
+      } catch (personalSignError) {
+        console.log("personal_sign failed, trying eth_signTypedData_v4");
+
+        try {
+          // Try eth_signTypedData_v4 as fallback
+          const typedData = {
+            types: {
+              EIP712Domain: [
+                { name: "name", type: "string" },
+                { name: "version", type: "string" },
+                { name: "chainId", type: "uint256" },
+              ],
+              Message: [{ name: "content", type: "string" }],
+            },
+            primaryType: "Message",
+            domain: {
+              name: "Tradoor",
+              version: "1",
+              chainId: 8453, // Base chain
+            },
+            message: {
+              content: message,
+            },
+          };
+
+          signedMessage = await sdk.wallet.ethProvider.request({
+            method: "eth_signTypedData_v4",
+            params: [address as `0x${string}`, JSON.stringify(typedData)],
+          });
+          console.log("Message signed successfully with eth_signTypedData_v4");
+        } catch (typedDataError) {
+          console.log("eth_signTypedData_v4 failed, trying eth_sign");
+
+          try {
+            // Try eth_sign as last resort
+            signedMessage = await sdk.wallet.ethProvider.request({
+              method: "eth_sign",
+              params: [address as `0x${string}`, message as `0x${string}`],
+            });
+            console.log("Message signed successfully with eth_sign");
+          } catch (ethSignError) {
+            console.error("All signing methods failed:", {
+              personalSignError,
+              typedDataError,
+              ethSignError,
+            });
+            throw new Error("No supported signing method found");
+          }
+        }
+      }
+
       signature = signedMessage as string;
       console.log("Message signed successfully with Farcaster SDK");
     } catch (signError) {
@@ -109,10 +166,36 @@ export class SecureFirestoreClient {
     profileData: Record<string, unknown>,
     context?: Record<string, unknown>
   ): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(this.address, "initializeUser", {
-      profileData,
-      context,
-    });
+    try {
+      console.log("Initializing user without signature (first-time user)");
+
+      const response = await fetch("/api/firestore-proxy", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          address: this.address,
+          action: "initializeUser",
+          data: {
+            profileData,
+            context,
+          },
+        }),
+      });
+
+      console.log("Response status:", response.status);
+      const result = await response.json();
+      console.log("Response result:", result);
+
+      return result;
+    } catch (error) {
+      console.error("Initialize user request failed:", error);
+      return {
+        success: false,
+        error: error instanceof Error ? error.message : "Request failed",
+      };
+    }
   }
 
   // Update leaderboard entry
