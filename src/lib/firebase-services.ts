@@ -158,6 +158,9 @@ export const userService = {
           newProfile.tier
         );
         console.log("Leaderboard updated successfully");
+
+        // Calculate and set initial rank
+        await this.updateUserRank(address);
         return;
       }
 
@@ -271,9 +274,73 @@ export const userService = {
         newTotalPoints,
         newTier
       );
+
+      // Update user rank
+      await this.updateUserRank(address);
     } catch (error) {
       console.error("Error updating user points:", error);
       throw error;
+    }
+  },
+
+  // Calculate and update user rank
+  async updateUserRank(address: string): Promise<void> {
+    try {
+      // Get all users ordered by points (descending)
+      const usersQuery = query(
+        collection(db, "users"),
+        orderBy("totalPoints", "desc")
+      );
+      const snapshot = await getDocs(usersQuery);
+
+      // Find the user's position
+      let userRank = 0;
+      snapshot.docs.forEach((doc, index) => {
+        if (doc.id === address) {
+          userRank = index + 1;
+        }
+      });
+
+      // Update the user's rank
+      if (userRank > 0) {
+        const userRef = doc(db, "users", address);
+        await updateDoc(userRef, {
+          currentRank: userRank,
+          updatedAt: serverTimestamp(),
+        });
+        console.log(`Updated rank for ${address}: ${userRank}`);
+      }
+    } catch (error) {
+      console.error("Error updating user rank:", error);
+    }
+  },
+
+  // Recalculate all user ranks
+  async recalculateAllRanks(): Promise<void> {
+    try {
+      console.log("Recalculating all user ranks...");
+
+      // Get all users ordered by points (descending)
+      const usersQuery = query(
+        collection(db, "users"),
+        orderBy("totalPoints", "desc")
+      );
+      const snapshot = await getDocs(usersQuery);
+
+      // Update each user's rank
+      const batch = writeBatch(db);
+      snapshot.docs.forEach((doc, index) => {
+        const rank = index + 1;
+        batch.update(doc.ref, {
+          currentRank: rank,
+          updatedAt: serverTimestamp(),
+        });
+      });
+
+      await batch.commit();
+      console.log(`Updated ranks for ${snapshot.docs.length} users`);
+    } catch (error) {
+      console.error("Error recalculating all ranks:", error);
     }
   },
 

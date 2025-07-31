@@ -22,7 +22,7 @@ export interface PointCalculation {
 }
 
 // Point calculation constants
-const POINTS_PER_TRANSACTION = 1;
+const POINTS_PER_TRANSACTION = 5;
 const POINTS_PER_GAS_UNIT = 0.5;
 const POINTS_PER_ETH_VALUE = 0.5;
 const MAX_INITIAL_POINTS = 1000; // Cap for initial points
@@ -96,8 +96,8 @@ export class BaseChainService {
 
     // Calculate points
     const transactionPoints = totalTransactions * POINTS_PER_TRANSACTION;
-    const gasPoints = (totalGasUsed / 1e15) * POINTS_PER_GAS_UNIT;
-    const valuePoints = (totalValue / 1e18) * POINTS_PER_ETH_VALUE; // Convert from wei to ETH
+    const gasPoints = (totalGasUsed / 1e12) * POINTS_PER_GAS_UNIT;
+    const valuePoints = (totalValue / 1e16) * POINTS_PER_ETH_VALUE; // Convert from wei to ETH
 
     const totalPoints = Math.min(
       transactionPoints + gasPoints + valuePoints,
