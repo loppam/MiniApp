@@ -19,8 +19,9 @@ import {
 } from "~/types/firebase";
 
 import { useSecureFirestore } from "~/lib/secure-firestore-client";
+import { firebaseCache } from "~/lib/cache";
 
-// Hook for user profile management
+// Hook for user profile management with caching
 export const useUserProfile = (address?: string) => {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -35,6 +36,16 @@ export const useUserProfile = (address?: string) => {
       return;
     }
 
+    const cacheKey = `profile_${address}`;
+    const cachedProfile = firebaseCache.get<UserProfile>(cacheKey);
+
+    if (cachedProfile) {
+      console.log("Using cached profile for address:", address);
+      setProfile(cachedProfile);
+      setLoading(false);
+      return;
+    }
+
     console.log("Loading profile for address:", address);
     setLoading(true);
     setError(null);
@@ -44,6 +55,9 @@ export const useUserProfile = (address?: string) => {
       .getUserProfile(address)
       .then((userProfile) => {
         console.log("Profile loaded:", userProfile);
+        if (userProfile) {
+          firebaseCache.set(cacheKey, userProfile);
+        }
         setProfile(userProfile);
         setLoading(false);
       })
@@ -53,11 +67,14 @@ export const useUserProfile = (address?: string) => {
         setLoading(false);
       });
 
-    // Real-time listener
+    // Real-time listener (only for updates, not initial load)
     const unsubscribe = createRealtimeListeners.onUserProfileChange(
       address,
       (userProfile) => {
         console.log("Profile updated via real-time listener:", userProfile);
+        if (userProfile) {
+          firebaseCache.set(cacheKey, userProfile);
+        }
         setProfile(userProfile);
         setLoading(false);
       }
@@ -75,6 +92,8 @@ export const useUserProfile = (address?: string) => {
         if (!result.success) {
           throw new Error(result.error || "Failed to update profile");
         }
+        // Clear cache after update to ensure fresh data
+        firebaseCache.clear();
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Failed to update profile"
@@ -93,6 +112,8 @@ export const useUserProfile = (address?: string) => {
         if (!result.success) {
           throw new Error(result.error || "Failed to add points");
         }
+        // Clear cache after points update
+        firebaseCache.clear();
       } catch (err) {
         setError(err instanceof Error ? err.message : "Failed to add points");
       }
@@ -109,7 +130,7 @@ export const useUserProfile = (address?: string) => {
   };
 };
 
-// Hook for transactions
+// Hook for transactions with caching
 export const useTransactions = (address?: string, limit: number = 10) => {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,12 +144,23 @@ export const useTransactions = (address?: string, limit: number = 10) => {
       return;
     }
 
+    const cacheKey = `transactions_${address}_${limit}`;
+    const cachedTransactions = firebaseCache.get<Transaction[]>(cacheKey);
+
+    if (cachedTransactions) {
+      console.log("Using cached transactions for address:", address);
+      setTransactions(cachedTransactions);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     transactionService
       .getUserTransactions(address, limit)
       .then((userTransactions) => {
+        firebaseCache.set(cacheKey, userTransactions);
         setTransactions(userTransactions);
         setLoading(false);
       })
@@ -149,6 +181,8 @@ export const useTransactions = (address?: string, limit: number = 10) => {
         if (!result.success) {
           throw new Error(result.error || "Failed to add transaction");
         }
+        // Clear cache after adding transaction
+        firebaseCache.clear();
         return result.data?.transactionId;
       } catch (err) {
         setError(
@@ -168,20 +202,30 @@ export const useTransactions = (address?: string, limit: number = 10) => {
   };
 };
 
-// Hook for leaderboard
+// Hook for leaderboard with caching
 export const useLeaderboard = (limit: number = 10) => {
   const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const cacheKey = `leaderboard_${limit}`;
+    const cachedLeaderboard = firebaseCache.get<LeaderboardEntry[]>(cacheKey);
+
+    if (cachedLeaderboard) {
+      console.log("Using cached leaderboard");
+      setLeaderboard(cachedLeaderboard);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
-    // Initial load
     leaderboardService
       .getTopUsers(limit)
       .then((topUsers) => {
+        firebaseCache.set(cacheKey, topUsers);
         setLeaderboard(topUsers);
         setLoading(false);
       })
@@ -190,10 +234,11 @@ export const useLeaderboard = (limit: number = 10) => {
         setLoading(false);
       });
 
-    // Real-time listener
+    // Real-time listener for leaderboard updates
     const unsubscribe = createRealtimeListeners.onLeaderboardChange(
       (entries) => {
-        setLeaderboard(entries.slice(0, limit));
+        firebaseCache.set(cacheKey, entries);
+        setLeaderboard(entries);
         setLoading(false);
       }
     );
@@ -208,13 +253,23 @@ export const useLeaderboard = (limit: number = 10) => {
   };
 };
 
-// Hook for platform stats
+// Hook for platform stats with caching
 export const usePlatformStats = () => {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const cacheKey = "platform_stats";
+    const cachedStats = firebaseCache.get<PlatformStats>(cacheKey);
+
+    if (cachedStats) {
+      console.log("Using cached platform stats");
+      setStats(cachedStats);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -222,6 +277,9 @@ export const usePlatformStats = () => {
     platformStatsService
       .getPlatformStats()
       .then((platformStats) => {
+        if (platformStats) {
+          firebaseCache.set(cacheKey, platformStats);
+        }
         setStats(platformStats);
         setLoading(false);
       })
@@ -233,6 +291,9 @@ export const usePlatformStats = () => {
     // Real-time listener
     const unsubscribe = createRealtimeListeners.onPlatformStatsChange(
       (platformStats) => {
+        if (platformStats) {
+          firebaseCache.set(cacheKey, platformStats);
+        }
         setStats(platformStats);
         setLoading(false);
       }
@@ -248,7 +309,7 @@ export const usePlatformStats = () => {
   };
 };
 
-// Hook for achievements
+// Hook for achievements with caching
 export const useAchievements = (address?: string) => {
   const [achievements, setAchievements] = useState<Achievement[]>([]);
   const [userAchievements, setUserAchievements] = useState<string[]>([]);
@@ -257,6 +318,20 @@ export const useAchievements = (address?: string) => {
   const secureClient = useSecureFirestore();
 
   useEffect(() => {
+    const cacheKey = `achievements_${address || "all"}`;
+    const cachedData = firebaseCache.get<{
+      achievements: Achievement[];
+      userAchievements: string[];
+    }>(cacheKey);
+
+    if (cachedData) {
+      console.log("Using cached achievements");
+      setAchievements(cachedData.achievements);
+      setUserAchievements(cachedData.userAchievements);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
@@ -268,6 +343,12 @@ export const useAchievements = (address?: string) => {
             ? userService.getUserAchievements(address)
             : Promise.resolve([]),
         ]);
+
+        const cacheData = {
+          achievements: allAchievements,
+          userAchievements: userAchievementIds.map((ua) => ua.achievementId),
+        };
+        firebaseCache.set(cacheKey, cacheData);
 
         setAchievements(allAchievements);
         setUserAchievements(userAchievementIds.map((ua) => ua.achievementId));
@@ -291,6 +372,8 @@ export const useAchievements = (address?: string) => {
       if (!result.success) {
         throw new Error(result.error || "Failed to check achievements");
       }
+      // Clear cache after checking achievements
+      firebaseCache.clear();
       return result.data?.achievements || [];
     } catch (err) {
       setError(
@@ -309,19 +392,30 @@ export const useAchievements = (address?: string) => {
   };
 };
 
-// Hook for milestones
+// Hook for milestones with caching
 export const useMilestones = () => {
   const [milestones, setMilestones] = useState<Milestone[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    const cacheKey = "milestones";
+    const cachedMilestones = firebaseCache.get<Milestone[]>(cacheKey);
+
+    if (cachedMilestones) {
+      console.log("Using cached milestones");
+      setMilestones(cachedMilestones);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
 
     milestoneService
       .getMilestones()
       .then((milestoneList) => {
+        firebaseCache.set(cacheKey, milestoneList);
         setMilestones(milestoneList);
         setLoading(false);
       })
@@ -338,31 +432,31 @@ export const useMilestones = () => {
   };
 };
 
-// Hook for trading actions
+// Hook for trading with cache clearing
 export const useTrading = () => {
-  const { address } = useAccount();
   const secureClient = useSecureFirestore();
 
   const executeTrade = useCallback(
-    async (
-      type: "buy" | "sell",
-      amount: number,
-      price: number
-    ) => {
-      if (!address || !secureClient) throw new Error("Wallet not connected");
+    async (type: "buy" | "sell", amount: number, price: number) => {
+      if (!secureClient) {
+        throw new Error("Wallet not connected");
+      }
 
       try {
         const result = await secureClient.executeTrade(type, amount, price);
         if (!result.success) {
           throw new Error(result.error || "Trade execution failed");
         }
-        return result.data?.transactionId;
-      } catch (error) {
-        console.error("Trade execution failed:", error);
-        throw error;
+        // Clear cache after trade execution
+        firebaseCache.clear();
+        return result.data;
+      } catch (err) {
+        throw new Error(
+          err instanceof Error ? err.message : "Trade execution failed"
+        );
       }
     },
-    [address, secureClient]
+    [secureClient]
   );
 
   return {
@@ -379,7 +473,11 @@ export const useUserAuth = () => {
   const initializeUser = useCallback(
     async (context: Record<string, unknown>) => {
       if (!address || !isConnected || !secureClient) {
-        console.log("Cannot initialize user:", { address, isConnected, hasSecureClient: !!secureClient });
+        console.log("Cannot initialize user:", {
+          address,
+          isConnected,
+          hasSecureClient: !!secureClient,
+        });
         return;
       }
 
@@ -390,6 +488,8 @@ export const useUserAuth = () => {
         if (!result.success) {
           throw new Error(result.error || "Failed to initialize user");
         }
+        // Clear cache after user initialization
+        firebaseCache.clear();
       } catch (error) {
         console.error("Failed to initialize user:", error);
       }

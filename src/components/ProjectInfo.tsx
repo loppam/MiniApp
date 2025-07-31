@@ -1,19 +1,24 @@
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Button } from "./ui/Button";
-import { Progress } from "./ui/progress";
-import {
-  Coins,
-  TrendingUp,
-  Users,
-  Target,
-  ExternalLink,
-  Loader2,
-} from "lucide-react";
-import { usePlatformStats, useMilestones } from "~/hooks/useFirebase";
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
+import { Badge } from "~/components/ui/badge";
+import { Button } from "~/components/ui/Button";
+import { Progress } from "~/components/ui/progress";
+import { Users, TrendingUp, Target, ExternalLink, Check } from "lucide-react";
 import { useAccount } from "wagmi";
+import {
+  usePlatformStats,
+  useMilestones,
+  useUserProfile,
+} from "~/hooks/useFirebase";
 
-export function ProjectInfo() {
+interface ProjectInfoProps {
+  onNavigateToRankUp?: () => void;
+  onNavigateToProfile?: () => void;
+}
+
+export function ProjectInfo({
+  onNavigateToRankUp,
+  onNavigateToProfile,
+}: ProjectInfoProps) {
   const { isConnected } = useAccount();
   const {
     stats,
@@ -25,26 +30,29 @@ export function ProjectInfo() {
     loading: milestoneLoading,
     error: milestoneError,
   } = useMilestones();
+  const { profile: userProfile } = useUserProfile();
+
+  // Check if user has completed initial points allocation
+  const hasCompletedInitialPoints = userProfile && userProfile.totalPoints > 0;
 
   if (statsLoading || milestoneLoading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-        <span className="ml-2 text-sm text-muted-foreground">
-          Loading project stats...
-        </span>
+      <div className="space-y-4">
+        <div className="text-center py-8">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p className="text-sm text-muted-foreground">
+            Loading project info...
+          </p>
+        </div>
       </div>
     );
   }
 
   if (statsError || milestoneError) {
     return (
-      <div className="text-center py-4">
-        <div className="text-sm text-red-500 mb-2">
-          Failed to load project data
-        </div>
-        <div className="text-xs text-muted-foreground">
-          {statsError || milestoneError}
+      <div className="space-y-4">
+        <div className="text-center py-8">
+          <p className="text-sm text-red-500">{statsError || milestoneError}</p>
         </div>
       </div>
     );
@@ -91,46 +99,34 @@ export function ProjectInfo() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card border-border">
+        <Card
+          className="bg-card border-border cursor-pointer hover:bg-accent/50 transition-colors"
+          onClick={onNavigateToProfile}
+        >
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-1 text-sm">
-              <Coins className="h-4 w-4 text-green-500" />
-              pTradoor
+              <TrendingUp className="h-4 w-4 text-green-500" />
+              Your Stats
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-2">
             <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Supply</span>
+              <span className="text-xs text-muted-foreground">Points</span>
               <span className="text-sm font-bold">
-                {stats ? stats.ptradoorSupply / 1000 : 0}K
+                {userProfile?.totalPoints.toLocaleString() || "0"}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs text-muted-foreground">Circulating</span>
+              <span className="text-xs text-muted-foreground">Rank</span>
               <span className="text-sm font-bold">
-                {stats ? Math.round(stats.ptradoorCirculating / 1000) : 0}K
+                #{userProfile?.currentRank || "0"}
               </span>
             </div>
-            <div className="space-y-1">
-              <div className="flex justify-between text-xs">
-                <span>Distribution</span>
-                <span>
-                  {stats
-                    ? Math.round(
-                        (stats.ptradoorCirculating / stats.ptradoorSupply) * 100
-                      )
-                    : 0}
-                  %
-                </span>
-              </div>
-              <Progress
-                value={
-                  stats
-                    ? (stats.ptradoorCirculating / stats.ptradoorSupply) * 100
-                    : 0
-                }
-                className="h-1.5"
-              />
+            <div className="flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">Tier</span>
+              <span className="text-sm font-bold">
+                {userProfile?.tier || "Bronze"}
+              </span>
             </div>
           </CardContent>
         </Card>
@@ -190,19 +186,41 @@ export function ProjectInfo() {
         </CardHeader>
         <CardContent className="space-y-2">
           <div className="grid grid-cols-2 gap-2">
-            <div className="p-2 rounded-lg bg-accent/30 border border-border">
-              <h4 className="text-xs font-medium mb-1">Base Transactions</h4>
+            <div
+              className="p-2 rounded-lg bg-accent/30 border border-border relative cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={onNavigateToRankUp}
+            >
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="text-xs font-medium">Base Transactions</h4>
+                {hasCompletedInitialPoints && (
+                  <Badge
+                    variant="default"
+                    className="bg-green-500/10 text-green-500 border-green-500/20 text-xs px-1.5 py-0"
+                  >
+                    <Check className="h-3 w-3" />
+                  </Badge>
+                )}
+              </div>
               <p className="text-xs text-muted-foreground">+0.5 point</p>
             </div>
-            <div className="p-2 rounded-lg bg-accent/30 border border-border">
+            <div
+              className="p-2 rounded-lg bg-accent/30 border border-border cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={onNavigateToRankUp}
+            >
               <h4 className="text-xs font-medium mb-1">pTradoor Trading</h4>
               <p className="text-xs text-muted-foreground">+3 points/trade</p>
             </div>
-            <div className="p-2 rounded-lg bg-accent/30 border border-border">
+            <div
+              className="p-2 rounded-lg bg-accent/30 border border-border cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={onNavigateToRankUp}
+            >
               <h4 className="text-xs font-medium mb-1">Hold pTradoor</h4>
               <p className="text-xs text-muted-foreground">+1 point/day</p>
             </div>
-            <div className="p-2 rounded-lg bg-accent/30 border border-border">
+            <div
+              className="p-2 rounded-lg bg-accent/30 border border-border cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={onNavigateToRankUp}
+            >
               <h4 className="text-xs font-medium mb-1">Weekly Streak</h4>
               <p className="text-xs text-muted-foreground">+50 bonus</p>
             </div>

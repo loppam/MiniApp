@@ -153,7 +153,10 @@ export default function TradoorApp(
       <main className="px-4 py-4 pb-24">
         {activeTab === "home" && (
           <div className="space-y-6">
-            <ProjectInfo />
+            <ProjectInfo
+              onNavigateToRankUp={() => setActiveTab("rankup")}
+              onNavigateToProfile={() => setActiveTab("profile")}
+            />
             <Leaderboard />
           </div>
         )}
