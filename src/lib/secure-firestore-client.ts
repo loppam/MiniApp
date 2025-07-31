@@ -1,4 +1,5 @@
-import { useAccount, useSignMessage } from "wagmi";
+import { useAccount } from "wagmi";
+import sdk from "@farcaster/miniapp-sdk";
 
 // Types for the API
 interface SecureFirestoreResponse {
@@ -13,29 +14,32 @@ function generateMessage(address: string, action: string): string {
   return `Tradoor ${action} for ${address} at ${timestamp}`;
 }
 
-// Make a secure request to the Firestore proxy
+// Make a secure request to the Firestore proxy using Farcaster SDK directly
 async function makeSecureRequest(
   address: string,
   action: string,
-  data?: Record<string, unknown>,
-  signMessage?: (message: string) => Promise<string>
+  data?: Record<string, unknown>
 ): Promise<SecureFirestoreResponse> {
   try {
     console.log("Making secure request:", { address, action, data });
-    
+
     const message = generateMessage(address, action);
     let signature = "";
 
-    if (signMessage) {
-      console.log("Signing message:", message);
-      signature = await signMessage(message);
-      console.log("Message signed successfully");
-    } else {
-      // Fallback for when signMessage is not available
-      console.warn("Message signing not available");
+    try {
+      console.log("Signing message with Farcaster SDK:", message);
+      // Use Farcaster SDK's ethProvider for signing
+      const signedMessage = await sdk.wallet.ethProvider.request({
+        method: "eth_sign",
+        params: [address as `0x${string}`, message],
+      });
+      signature = signedMessage as string;
+      console.log("Message signed successfully with Farcaster SDK");
+    } catch (signError) {
+      console.error("Failed to sign message with Farcaster SDK:", signError);
       return {
         success: false,
-        error: "Message signing not available",
+        error: "Failed to sign message",
       };
     }
 
@@ -57,7 +61,7 @@ async function makeSecureRequest(
     console.log("Response status:", response.status);
     const result = await response.json();
     console.log("Response result:", result);
-    
+
     return result;
   } catch (error) {
     console.error("Secure Firestore request failed:", error);
@@ -71,58 +75,33 @@ async function makeSecureRequest(
 // Secure Firestore Client
 export class SecureFirestoreClient {
   private address: string;
-  private signMessage?: (message: string) => Promise<string>;
 
-  constructor(
-    address: string,
-    signMessage?: (message: string) => Promise<string>
-  ) {
+  constructor(address: string) {
     this.address = address;
-    this.signMessage = signMessage;
   }
 
   // Update user profile
   async updateProfile(
     profileData: Record<string, unknown>
   ): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(
-      this.address,
-      "updateProfile",
-      profileData,
-      this.signMessage
-    );
+    return makeSecureRequest(this.address, "updateProfile", profileData);
   }
 
   // Add a transaction
   async addTransaction(
     transactionData: Record<string, unknown>
   ): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(
-      this.address,
-      "addTransaction",
-      transactionData,
-      this.signMessage
-    );
+    return makeSecureRequest(this.address, "addTransaction", transactionData);
   }
 
   // Update user points
   async updateUserPoints(points: number): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(
-      this.address,
-      "updateUserPoints",
-      { points },
-      this.signMessage
-    );
+    return makeSecureRequest(this.address, "updateUserPoints", { points });
   }
 
   // Check and award achievements
   async checkAchievements(): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(
-      this.address,
-      "checkAchievements",
-      undefined,
-      this.signMessage
-    );
+    return makeSecureRequest(this.address, "checkAchievements");
   }
 
   // Initialize user
@@ -130,15 +109,10 @@ export class SecureFirestoreClient {
     profileData: Record<string, unknown>,
     context?: Record<string, unknown>
   ): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(
-      this.address,
-      "initializeUser",
-      {
-        profileData,
-        context,
-      },
-      this.signMessage
-    );
+    return makeSecureRequest(this.address, "initializeUser", {
+      profileData,
+      context,
+    });
   }
 
   // Update leaderboard entry
@@ -146,15 +120,10 @@ export class SecureFirestoreClient {
     points: number,
     tier: string
   ): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(
-      this.address,
-      "updateLeaderboardEntry",
-      {
-        points,
-        tier,
-      },
-      this.signMessage
-    );
+    return makeSecureRequest(this.address, "updateLeaderboardEntry", {
+      points,
+      tier,
+    });
   }
 
   // Execute a trade
@@ -163,37 +132,26 @@ export class SecureFirestoreClient {
     amount: number,
     price: number
   ): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(
-      this.address,
-      "executeTrade",
-      {
-        type,
-        amount,
-        price,
-      },
-      this.signMessage
-    );
+    return makeSecureRequest(this.address, "executeTrade", {
+      type,
+      amount,
+      price,
+    });
   }
 
   // Test Firebase connection
   async testConnection(): Promise<SecureFirestoreResponse> {
-    return makeSecureRequest(
-      this.address,
-      "testConnection",
-      undefined,
-      this.signMessage
-    );
+    return makeSecureRequest(this.address, "testConnection");
   }
 }
 
-// Hook to use secure Firestore with wagmi
+// Hook to use secure Firestore with Farcaster SDK
 export function useSecureFirestore() {
   const { address } = useAccount();
-  const { signMessageAsync } = useSignMessage();
 
   console.log("useSecureFirestore:", {
     address,
-    hasSignMessageAsync: !!signMessageAsync,
+    hasSDK: !!sdk,
   });
 
   if (!address) {
@@ -201,22 +159,18 @@ export function useSecureFirestore() {
     return null;
   }
 
-  if (!signMessageAsync) {
-    console.log("No signMessageAsync, returning null");
+  if (!sdk) {
+    console.log("No Farcaster SDK, returning null");
     return null;
   }
 
-  // Wrap signMessageAsync to match the expected signature
-  const signMessage = (message: string) => signMessageAsync({ message });
-
-  console.log("Creating SecureFirestoreClient");
-  return new SecureFirestoreClient(address, signMessage);
+  console.log("Creating SecureFirestoreClient with Farcaster SDK");
+  return new SecureFirestoreClient(address);
 }
 
 // Factory function to create a secure Firestore client
 export function createSecureFirestoreClient(
-  address: string,
-  signMessage?: (message: string) => Promise<string>
+  address: string
 ): SecureFirestoreClient {
-  return new SecureFirestoreClient(address, signMessage);
+  return new SecureFirestoreClient(address);
 }
