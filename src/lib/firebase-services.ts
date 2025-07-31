@@ -41,11 +41,27 @@ interface ContextData {
 
 // User Profile Services
 export const userService = {
+  // Test Firebase connection
+  async testConnection(): Promise<boolean> {
+    try {
+      console.log("Testing Firebase connection...");
+      await getDoc(doc(db, "system", "test"));
+      console.log("Firebase connection successful");
+      return true;
+    } catch (error) {
+      console.error("Firebase connection failed:", error);
+      return false;
+    }
+  },
+
   // Get user profile by wallet address
   async getUserProfile(address: string): Promise<UserProfile | null> {
     try {
+      console.log("Getting user profile for:", address);
       const userDoc = await getDoc(doc(db, "users", address));
-      return userDoc.exists() ? (userDoc.data() as UserProfile) : null;
+      const exists = userDoc.exists();
+      console.log("User profile exists:", exists);
+      return exists ? (userDoc.data() as UserProfile) : null;
     } catch (error) {
       console.error("Error getting user profile:", error);
       return null;
@@ -59,19 +75,29 @@ export const userService = {
     context?: ContextData
   ): Promise<void> {
     try {
+      console.log("Upserting user profile for:", address);
+      console.log("Profile data:", profileData);
+      console.log("Context:", context);
+      
       const userRef = doc(db, "users", address);
       const userDoc = await getDoc(userRef);
+      const exists = userDoc.exists();
+      console.log("User already exists:", exists);
 
-      if (userDoc.exists()) {
+      if (exists) {
         // Update existing user
+        console.log("Updating existing user...");
         await updateDoc(userRef, {
           ...profileData,
           lastActive: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+        console.log("User updated successfully");
       } else {
         // Create new user with initial points allocation
+        console.log("Creating new user...");
         const initialPoints = await this.allocateInitialPoints(address);
+        console.log("Initial points allocated:", initialPoints);
 
         const newProfile = {
           address,
@@ -94,14 +120,19 @@ export const userService = {
           updatedAt: serverTimestamp(),
           ...profileData,
         };
+        
+        console.log("Creating profile with data:", newProfile);
         await setDoc(userRef, newProfile);
+        console.log("User profile created successfully");
 
         // Update leaderboard with initial points
+        console.log("Updating leaderboard...");
         await leaderboardService.updateLeaderboardEntry(
           address,
           initialPoints.points,
           newProfile.tier
         );
+        console.log("Leaderboard updated successfully");
       }
     } catch (error) {
       console.error("Error upserting user profile:", error);

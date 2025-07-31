@@ -13,6 +13,7 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
 import { useUserAuth, useUserProfile } from "~/hooks/useFirebase";
+import { useSecureFirestore } from "~/lib/secure-firestore-client";
 
 export default function TradoorApp(
   { title }: { title?: string } = { title: "Tradoor" }
@@ -28,6 +29,7 @@ export default function TradoorApp(
   // Firebase hooks
   const { initializeUser } = useUserAuth();
   const { profile: userProfile } = useUserProfile(address);
+  const secureClient = useSecureFirestore();
 
   // Initialize Mini App SDK and Firebase user
   useEffect(() => {
@@ -42,8 +44,14 @@ export default function TradoorApp(
         if (address && isConnected) {
           console.log("Initializing user with address:", address);
           console.log("SDK context for initialization:", sdkContext);
-          await initializeUser(sdkContext);
-          console.log("User initialization completed");
+
+          try {
+            await initializeUser(sdkContext);
+            console.log("User initialization completed successfully");
+          } catch (initError) {
+            console.error("User initialization failed:", initError);
+            // Continue with app loading even if initialization fails
+          }
         } else {
           console.log("Not initializing user:", { address, isConnected });
         }
@@ -69,9 +77,9 @@ export default function TradoorApp(
   // Use Firebase profile data or fallback to mock data
   const userStats = {
     address: address || "0xnotconnected",
-    points: userProfile?.totalPoints || 2750,
-    rank: userProfile?.currentRank || 156,
-    tier: userProfile?.tier || "Silver",
+    points: userProfile?.totalPoints || "0",
+    rank: userProfile?.currentRank || "0",
+    tier: userProfile?.tier || "N/A",
   };
 
   const formatAddress = (address: string) => {
@@ -91,6 +99,33 @@ export default function TradoorApp(
       connect({ connector: config.connectors[0] });
     }
   }, [isConnected, connect, disconnect]);
+
+  const handleTestConnection = useCallback(async () => {
+    if (!address || !isConnected || !secureClient) {
+      console.log("Cannot test connection:", {
+        address,
+        isConnected,
+        hasSecureClient: !!secureClient,
+      });
+      return;
+    }
+
+    try {
+      console.log("Testing Firebase connection...");
+      const result = await secureClient.testConnection();
+      console.log("Test connection result:", result);
+      if (result.success) {
+        console.log("Firebase connection successful!");
+        alert("Firebase connection successful!");
+      } else {
+        console.error("Firebase connection failed:", result.error);
+        alert(`Firebase connection failed: ${result.error}`);
+      }
+    } catch (error) {
+      console.error("Test connection failed:", error);
+      alert(`Test connection failed: ${error}`);
+    }
+  }, [address, isConnected, secureClient]);
 
   if (!isSDKLoaded) {
     return (
@@ -191,6 +226,20 @@ export default function TradoorApp(
               </Button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Debug Test Button - Only show when connected */}
+      {isConnected && (
+        <div className="fixed top-20 right-4 z-50">
+          <Button
+            onClick={handleTestConnection}
+            size="sm"
+            variant="outline"
+            className="bg-red-500/10 text-red-500 border-red-500/20"
+          >
+            Test Firebase
+          </Button>
         </div>
       )}
     </div>

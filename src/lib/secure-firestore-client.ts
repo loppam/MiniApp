@@ -21,11 +21,15 @@ async function makeSecureRequest(
   signMessage?: (message: string) => Promise<string>
 ): Promise<SecureFirestoreResponse> {
   try {
+    console.log("Making secure request:", { address, action, data });
+    
     const message = generateMessage(address, action);
     let signature = "";
 
     if (signMessage) {
+      console.log("Signing message:", message);
       signature = await signMessage(message);
+      console.log("Message signed successfully");
     } else {
       // Fallback for when signMessage is not available
       console.warn("Message signing not available");
@@ -35,6 +39,7 @@ async function makeSecureRequest(
       };
     }
 
+    console.log("Sending request to /api/firestore-proxy");
     const response = await fetch("/api/firestore-proxy", {
       method: "POST",
       headers: {
@@ -49,7 +54,10 @@ async function makeSecureRequest(
       }),
     });
 
+    console.log("Response status:", response.status);
     const result = await response.json();
+    console.log("Response result:", result);
+    
     return result;
   } catch (error) {
     console.error("Secure Firestore request failed:", error);
@@ -163,6 +171,16 @@ export class SecureFirestoreClient {
         amount,
         price,
       },
+      this.signMessage
+    );
+  }
+
+  // Test Firebase connection
+  async testConnection(): Promise<SecureFirestoreResponse> {
+    return makeSecureRequest(
+      this.address,
+      "testConnection",
+      undefined,
       this.signMessage
     );
   }
