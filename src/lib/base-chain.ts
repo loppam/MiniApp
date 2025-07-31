@@ -47,6 +47,11 @@ export class BaseChainService {
         // No transactions or error
         return [];
       }
+      // Debug: log result count and a sample transaction
+      console.log("Basescan API result count:", data.result.length);
+      if (data.result.length > 0) {
+        console.log("Sample transaction:", data.result[0]);
+      }
       // Map Basescan txs to BaseTransaction
       const transactions: BaseTransaction[] = data.result.map(
         (tx: Record<string, string>) => ({
@@ -77,9 +82,17 @@ export class BaseChainService {
 
     // Calculate totals
     for (const tx of transactions) {
+      // Debug: log each transaction's gas, gasPrice, and value
+      console.log("Parsing tx:", {
+        gas: tx.gas,
+        gasPrice: tx.gasPrice,
+        value: tx.value,
+      });
       totalGasUsed += parseInt(tx.gas) * parseInt(tx.gasPrice);
       totalValue += parseInt(tx.value);
     }
+    // Debug: log totals after loop
+    console.log("Total gas used:", totalGasUsed, "Total value:", totalValue);
 
     // Calculate points
     const transactionPoints = totalTransactions * POINTS_PER_TRANSACTION;

@@ -95,19 +95,14 @@ export const userService = {
       const exists = userDoc.exists();
       console.log("User already exists:", exists);
 
+      let userData: UserProfile | undefined = undefined;
       if (exists) {
-        // Update existing user
-        console.log("Updating existing user...");
-        const updateData = removeUndefinedValues({
-          ...profileData,
-          lastActive: serverTimestamp(),
-          updatedAt: serverTimestamp(),
-        });
-        await updateDoc(userRef, updateData);
-        console.log("User updated successfully");
-      } else {
-        // Create new user with initial points allocation
-        console.log("Creating new user...");
+        userData = userDoc.data() as UserProfile;
+      }
+
+      // If user does not have initial points, allocate them
+      if (!userData || userData.initial !== true) {
+        console.log("Allocating initial points for user...");
         const initialPoints = await this.allocateInitialPoints(address);
         console.log("Initial points allocated:", initialPoints);
 
@@ -130,12 +125,13 @@ export const userService = {
           achievements: [],
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
+          initial: true,
           ...profileData,
         });
 
-        console.log("Creating profile with data:", newProfile);
-        await setDoc(userRef, newProfile);
-        console.log("User profile created successfully");
+        console.log("Creating or updating profile with data:", newProfile);
+        await setDoc(userRef, newProfile, { merge: true });
+        console.log("User profile created/updated successfully");
 
         // Update leaderboard with initial points
         console.log("Updating leaderboard...");
@@ -145,6 +141,19 @@ export const userService = {
           newProfile.tier
         );
         console.log("Leaderboard updated successfully");
+        return;
+      }
+
+      // If user exists and already has initial points, just update profileData
+      if (exists) {
+        console.log("Updating existing user...");
+        const updateData = removeUndefinedValues({
+          ...profileData,
+          lastActive: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        await updateDoc(userRef, updateData);
+        console.log("User updated successfully");
       }
     } catch (error) {
       console.error("Error upserting user profile:", error);
@@ -183,8 +192,7 @@ export const userService = {
       // Log the initial points allocation
       console.log(`Initial points allocated for ${address}:`, initialPoints);
 
-      // Set the 'initial' flag to true in the user profile
-      await setDoc(userRef, { initial: true }, { merge: true });
+      // (No need to set initial: true here; handled in upsertUserProfile)
 
       return initialPoints;
     } catch (error) {
