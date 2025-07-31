@@ -22,10 +22,10 @@ export interface PointCalculation {
 }
 
 // Point calculation constants
-const POINTS_PER_TRANSACTION = 1;
+const POINTS_PER_TRANSACTION = 0.5;
 const POINTS_PER_GAS_UNIT = 0.0001;
-const POINTS_PER_ETH_VALUE = 10;
-const MAX_INITIAL_POINTS = 1000; // Cap for initial points
+const POINTS_PER_ETH_VALUE = 1;
+const MAX_INITIAL_POINTS = 10000; // Cap for initial points
 
 export class BaseChainService {
   // Get all transactions for a wallet address on Base

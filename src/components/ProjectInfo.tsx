@@ -192,15 +192,15 @@ export function ProjectInfo() {
           <div className="grid grid-cols-2 gap-2">
             <div className="p-2 rounded-lg bg-accent/30 border border-border">
               <h4 className="text-xs font-medium mb-1">Base Transactions</h4>
-              <p className="text-xs text-muted-foreground">+1 point</p>
+              <p className="text-xs text-muted-foreground">+0.5 point</p>
             </div>
             <div className="p-2 rounded-lg bg-accent/30 border border-border">
               <h4 className="text-xs font-medium mb-1">pTradoor Trading</h4>
-              <p className="text-xs text-muted-foreground">+5 points</p>
+              <p className="text-xs text-muted-foreground">+3 points/trade</p>
             </div>
             <div className="p-2 rounded-lg bg-accent/30 border border-border">
               <h4 className="text-xs font-medium mb-1">Hold pTradoor</h4>
-              <p className="text-xs text-muted-foreground">+0.1/day</p>
+              <p className="text-xs text-muted-foreground">+1 point/day</p>
             </div>
             <div className="p-2 rounded-lg bg-accent/30 border border-border">
               <h4 className="text-xs font-medium mb-1">Weekly Streak</h4>

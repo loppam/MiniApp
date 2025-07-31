@@ -133,6 +133,23 @@ export const userService = {
         await setDoc(userRef, newProfile, { merge: true });
         console.log("User profile created/updated successfully");
 
+        // Update platform stats to increment totalUsers
+        try {
+          const currentStats = await platformStatsService.getPlatformStats();
+          if (currentStats) {
+            await platformStatsService.updatePlatformStats({
+              totalUsers: currentStats.totalUsers + 1,
+              totalPoints: currentStats.totalPoints + initialPoints.points,
+            });
+            console.log(
+              "Platform stats updated - totalUsers incremented, totalPoints incremented by",
+              initialPoints.points
+            );
+          }
+        } catch (statsError) {
+          console.error("Error updating platform stats:", statsError);
+        }
+
         // Update leaderboard with initial points
         console.log("Updating leaderboard...");
         await leaderboardService.updateLeaderboardEntry(
@@ -232,6 +249,22 @@ export const userService = {
         updatedAt: serverTimestamp(),
       });
 
+      // Update platform stats to increment totalPoints
+      try {
+        const currentStats = await platformStatsService.getPlatformStats();
+        if (currentStats) {
+          await platformStatsService.updatePlatformStats({
+            totalPoints: currentStats.totalPoints + pointsToAdd,
+          });
+          console.log(
+            "Platform stats updated - totalPoints incremented by",
+            pointsToAdd
+          );
+        }
+      } catch (statsError) {
+        console.error("Error updating platform stats:", statsError);
+      }
+
       // Update leaderboard
       await leaderboardService.updateLeaderboardEntry(
         address,
@@ -275,6 +308,20 @@ export const transactionService = {
         collection(db, "transactions"),
         transactionData
       );
+
+      // Update platform stats to increment totalTransactions
+      try {
+        const currentStats = await platformStatsService.getPlatformStats();
+        if (currentStats) {
+          await platformStatsService.updatePlatformStats({
+            totalTransactions: currentStats.totalTransactions + 1,
+          });
+          console.log("Platform stats updated - totalTransactions incremented");
+        }
+      } catch (statsError) {
+        console.error("Error updating platform stats:", statsError);
+      }
+
       return docRef.id;
     } catch (error) {
       console.error("Error adding transaction:", error);
