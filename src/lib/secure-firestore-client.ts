@@ -1,4 +1,4 @@
-import { useAccount, useSignMessage, useWalletClient } from "wagmi";
+import { useAccount, useSignMessage } from "wagmi";
 
 // Types for the API
 interface SecureFirestoreResponse {
@@ -190,12 +190,10 @@ export class SecureFirestoreClient {
 export function useSecureFirestore() {
   const { address } = useAccount();
   const { signMessageAsync } = useSignMessage();
-  const { data: walletClient } = useWalletClient();
 
   console.log("useSecureFirestore:", {
     address,
     hasSignMessageAsync: !!signMessageAsync,
-    hasWalletClient: !!walletClient,
   });
 
   if (!address) {

@@ -45,13 +45,16 @@ export default function TradoorApp(
           console.log("Initializing user with address:", address);
           console.log("SDK context for initialization:", sdkContext);
 
-          try {
-            await initializeUser(sdkContext);
-            console.log("User initialization completed successfully");
-          } catch (initError) {
-            console.error("User initialization failed:", initError);
-            // Continue with app loading even if initialization fails
-          }
+          // Wait a bit for the secure client to be available
+          setTimeout(async () => {
+            try {
+              await initializeUser(sdkContext);
+              console.log("User initialization completed successfully");
+            } catch (initError) {
+              console.error("User initialization failed:", initError);
+              // Continue with app loading even if initialization fails
+            }
+          }, 1000);
         } else {
           console.log("Not initializing user:", { address, isConnected });
         }
@@ -101,30 +104,52 @@ export default function TradoorApp(
   }, [isConnected, connect, disconnect]);
 
   const handleTestConnection = useCallback(async () => {
-    if (!address || !isConnected || !secureClient) {
+    if (!address || !isConnected) {
       console.log("Cannot test connection:", {
         address,
         isConnected,
-        hasSecureClient: !!secureClient,
       });
       return;
     }
 
-    try {
-      console.log("Testing Firebase connection...");
-      const result = await secureClient.testConnection();
-      console.log("Test connection result:", result);
-      if (result.success) {
-        console.log("Firebase connection successful!");
-        alert("Firebase connection successful!");
-      } else {
-        console.error("Firebase connection failed:", result.error);
-        alert(`Firebase connection failed: ${result.error}`);
+    // Wait for secure client to be available
+    let attempts = 0;
+    const maxAttempts = 5;
+
+    const attemptTest = async () => {
+      if (!secureClient) {
+        attempts++;
+        if (attempts < maxAttempts) {
+          console.log(
+            `Secure client not available, retrying in 500ms... (attempt ${attempts}/${maxAttempts})`
+          );
+          setTimeout(attemptTest, 500);
+          return;
+        } else {
+          console.error("Secure client not available after maximum attempts");
+          alert("Secure client not available. Please try refreshing the page.");
+          return;
+        }
       }
-    } catch (error) {
-      console.error("Test connection failed:", error);
-      alert(`Test connection failed: ${error}`);
-    }
+
+      try {
+        console.log("Testing Firebase connection...");
+        const result = await secureClient.testConnection();
+        console.log("Test connection result:", result);
+        if (result.success) {
+          console.log("Firebase connection successful!");
+          alert("Firebase connection successful!");
+        } else {
+          console.error("Firebase connection failed:", result.error);
+          alert(`Firebase connection failed: ${result.error}`);
+        }
+      } catch (error) {
+        console.error("Test connection failed:", error);
+        alert(`Test connection failed: ${error}`);
+      }
+    };
+
+    attemptTest();
   }, [address, isConnected, secureClient]);
 
   if (!isSDKLoaded) {
