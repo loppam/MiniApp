@@ -7,7 +7,6 @@ import {
   leaderboardService,
   platformStatsService,
   milestoneService,
-  createRealtimeListeners,
 } from "~/lib/firebase-services";
 import {
   UserProfile,
@@ -50,7 +49,7 @@ export const useUserProfile = (address?: string) => {
     setLoading(true);
     setError(null);
 
-    // Initial load
+    // Initial load only - no real-time listener
     userService
       .getUserProfile(address)
       .then((userProfile) => {
@@ -66,21 +65,6 @@ export const useUserProfile = (address?: string) => {
         setError(err.message);
         setLoading(false);
       });
-
-    // Real-time listener (only for updates, not initial load)
-    const unsubscribe = createRealtimeListeners.onUserProfileChange(
-      address,
-      (userProfile) => {
-        console.log("Profile updated via real-time listener:", userProfile);
-        if (userProfile) {
-          firebaseCache.set(cacheKey, userProfile);
-        }
-        setProfile(userProfile);
-        setLoading(false);
-      }
-    );
-
-    return unsubscribe;
   }, [address]);
 
   const updateProfile = useCallback(
@@ -233,17 +217,6 @@ export const useLeaderboard = (limit: number = 10) => {
         setError(err.message);
         setLoading(false);
       });
-
-    // Real-time listener for leaderboard updates
-    const unsubscribe = createRealtimeListeners.onLeaderboardChange(
-      (entries) => {
-        firebaseCache.set(cacheKey, entries);
-        setLeaderboard(entries);
-        setLoading(false);
-      }
-    );
-
-    return unsubscribe;
   }, [limit]);
 
   return {
@@ -287,19 +260,6 @@ export const usePlatformStats = () => {
         setError(err.message);
         setLoading(false);
       });
-
-    // Real-time listener
-    const unsubscribe = createRealtimeListeners.onPlatformStatsChange(
-      (platformStats) => {
-        if (platformStats) {
-          firebaseCache.set(cacheKey, platformStats);
-        }
-        setStats(platformStats);
-        setLoading(false);
-      }
-    );
-
-    return unsubscribe;
   }, []);
 
   return {
