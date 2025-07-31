@@ -13,7 +13,6 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
 import { useUserAuth, useUserProfile } from "~/hooks/useFirebase";
-import { useSecureFirestore } from "~/lib/secure-firestore-client";
 
 export default function TradoorApp(
   { title }: { title?: string } = { title: "Tradoor" }
@@ -29,7 +28,6 @@ export default function TradoorApp(
   // Firebase hooks
   const { initializeUser } = useUserAuth();
   const { profile: userProfile } = useUserProfile(address);
-  const secureClient = useSecureFirestore();
 
   // Initialize Mini App SDK and Firebase user
   useEffect(() => {
@@ -103,54 +101,7 @@ export default function TradoorApp(
     }
   }, [isConnected, connect, disconnect]);
 
-  const handleTestConnection = useCallback(async () => {
-    if (!address || !isConnected) {
-      console.log("Cannot test connection:", {
-        address,
-        isConnected,
-      });
-      return;
-    }
-
-    // Wait for secure client to be available
-    let attempts = 0;
-    const maxAttempts = 5;
-
-    const attemptTest = async () => {
-      if (!secureClient) {
-        attempts++;
-        if (attempts < maxAttempts) {
-          console.log(
-            `Secure client not available, retrying in 500ms... (attempt ${attempts}/${maxAttempts})`
-          );
-          setTimeout(attemptTest, 500);
-          return;
-        } else {
-          console.error("Secure client not available after maximum attempts");
-          alert("Secure client not available. Please try refreshing the page.");
-          return;
-        }
-      }
-
-      try {
-        console.log("Testing Firebase connection...");
-        const result = await secureClient.testConnection();
-        console.log("Test connection result:", result);
-        if (result.success) {
-          console.log("Firebase connection successful!");
-          alert("Firebase connection successful!");
-        } else {
-          console.error("Firebase connection failed:", result.error);
-          alert(`Firebase connection failed: ${result.error}`);
-        }
-      } catch (error) {
-        console.error("Test connection failed:", error);
-        alert(`Test connection failed: ${error}`);
-      }
-    };
-
-    attemptTest();
-  }, [address, isConnected, secureClient]);
+  // Remove handleTestConnection and related debug button
 
   if (!isSDKLoaded) {
     return (
@@ -251,20 +202,6 @@ export default function TradoorApp(
               </Button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Debug Test Button - Only show when connected */}
-      {isConnected && (
-        <div className="fixed top-20 right-4 z-50">
-          <Button
-            onClick={handleTestConnection}
-            size="sm"
-            variant="outline"
-            className="bg-red-500/10 text-red-500 border-red-500/20"
-          >
-            Test Firebase
-          </Button>
         </div>
       )}
     </div>

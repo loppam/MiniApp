@@ -89,7 +89,7 @@ export const userService = {
       console.log("Upserting user profile for:", address);
       console.log("Profile data:", profileData);
       console.log("Context:", context);
-      
+
       const userRef = doc(db, "users", address);
       const userDoc = await getDoc(userRef);
       const exists = userDoc.exists();
@@ -132,7 +132,7 @@ export const userService = {
           updatedAt: serverTimestamp(),
           ...profileData,
         });
-        
+
         console.log("Creating profile with data:", newProfile);
         await setDoc(userRef, newProfile);
         console.log("User profile created successfully");
@@ -161,8 +161,8 @@ export const userService = {
 
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserProfile;
-        if (userData.totalPoints > 0) {
-          // User already has points, return current state
+        if (userData.initial === true) {
+          // User already has initial points, return current state
           return {
             totalTransactions: userData.totalTransactions,
             totalGasUsed: 0,
@@ -182,6 +182,9 @@ export const userService = {
 
       // Log the initial points allocation
       console.log(`Initial points allocated for ${address}:`, initialPoints);
+
+      // Set the 'initial' flag to true in the user profile
+      await setDoc(userRef, { initial: true }, { merge: true });
 
       return initialPoints;
     } catch (error) {

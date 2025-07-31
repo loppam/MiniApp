@@ -19,6 +19,7 @@ export interface UserProfile {
   achievements: string[];
   createdAt: Timestamp;
   updatedAt: Timestamp;
+  initial?: boolean;
 }
 
 export interface Transaction {

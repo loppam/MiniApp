@@ -1,12 +1,3 @@
-import { createPublicClient, http } from "viem";
-import { base } from "wagmi/chains";
-
-// Base chain RPC client
-const baseClient = createPublicClient({
-  chain: base,
-  transport: http(),
-});
-
 export interface BaseTransaction {
   hash: string;
   blockNumber: string;
@@ -42,51 +33,36 @@ export class BaseChainService {
     address: string
   ): Promise<BaseTransaction[]> {
     try {
-      // Get transaction count (unused but kept for future use)
-      await baseClient.getTransactionCount({
-        address: address as `0x${string}`,
-      });
-
-      const transactions: BaseTransaction[] = [];
-
-      // Get recent transactions (last 100 blocks for performance)
-      const latestBlock = await baseClient.getBlockNumber();
-      const fromBlock = latestBlock - 100n;
-
-      // Get logs for the address
-      const logs = await baseClient.getLogs({
-        address: address as `0x${string}`,
-        fromBlock,
-        toBlock: latestBlock,
-      });
-
-      // Process logs to get transaction details
-      for (const log of logs) {
-        try {
-          const tx = await baseClient.getTransaction({
-            hash: log.transactionHash,
-          });
-
-          if (tx) {
-            transactions.push({
-              hash: tx.hash,
-              blockNumber: tx.blockNumber?.toString() || "0",
-              from: tx.from,
-              to: tx.to || "",
-              value: tx.value.toString(),
-              gas: tx.gas.toString(),
-              gasPrice: tx.gasPrice?.toString() || "0",
-              timestamp: Date.now().toString(), // Approximate
-            });
-          }
-        } catch (error) {
-          console.warn("Failed to get transaction details:", error);
-        }
+      const apiKey = process.env.BASESCAN_API_KEY;
+      if (!apiKey) {
+        throw new Error("BASESCAN_API_KEY is not set in environment");
       }
-
+      const url = `https://api.basescan.org/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${apiKey}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        throw new Error(`Basescan API error: ${res.status}`);
+      }
+      const data = await res.json();
+      if (data.status !== "1" || !Array.isArray(data.result)) {
+        // No transactions or error
+        return [];
+      }
+      // Map Basescan txs to BaseTransaction
+      const transactions: BaseTransaction[] = data.result.map(
+        (tx: Record<string, string>) => ({
+          hash: tx.hash,
+          blockNumber: tx.blockNumber,
+          from: tx.from,
+          to: tx.to,
+          value: tx.value,
+          gas: tx.gas,
+          gasPrice: tx.gasPrice,
+          timestamp: tx.timeStamp, // Unix timestamp (seconds)
+        })
+      );
       return transactions;
     } catch (error) {
-      console.error("Error fetching Base transactions:", error);
+      console.error("Error fetching Base transactions from Basescan:", error);
       return [];
     }
   }
