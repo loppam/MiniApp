@@ -27,6 +27,17 @@ import {
 } from "~/types/firebase";
 import { BaseChainService, PointCalculation } from "./base-chain";
 
+// Utility function to remove undefined values from objects
+function removeUndefinedValues<T extends Record<string, unknown>>(obj: T): T {
+  const cleaned: Record<string, unknown> = {};
+  for (const [key, value] of Object.entries(obj)) {
+    if (value !== undefined) {
+      cleaned[key] = value;
+    }
+  }
+  return cleaned as T;
+}
+
 // Types for user context
 interface UserContext {
   fid?: number;
@@ -87,11 +98,12 @@ export const userService = {
       if (exists) {
         // Update existing user
         console.log("Updating existing user...");
-        await updateDoc(userRef, {
+        const updateData = removeUndefinedValues({
           ...profileData,
           lastActive: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
+        await updateDoc(userRef, updateData);
         console.log("User updated successfully");
       } else {
         // Create new user with initial points allocation
@@ -99,7 +111,7 @@ export const userService = {
         const initialPoints = await this.allocateInitialPoints(address);
         console.log("Initial points allocated:", initialPoints);
 
-        const newProfile = {
+        const newProfile = removeUndefinedValues({
           address,
           fid: context?.user?.fid,
           username: context?.user?.username,
@@ -119,7 +131,7 @@ export const userService = {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           ...profileData,
-        };
+        });
         
         console.log("Creating profile with data:", newProfile);
         await setDoc(userRef, newProfile);
