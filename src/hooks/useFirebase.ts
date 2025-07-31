@@ -38,7 +38,11 @@ export const useUserProfile = (address?: string) => {
     const cacheKey = `profile_${address}`;
     const cachedProfile = firebaseCache.get<UserProfile>(cacheKey);
 
-    if (cachedProfile) {
+    // Check if we should skip cache (for new users in first 4 hours)
+    const shouldSkipCache =
+      cachedProfile && firebaseCache.shouldSkipCache(cachedProfile);
+
+    if (cachedProfile && !shouldSkipCache) {
       console.log("Using cached profile for address:", address);
       setProfile(cachedProfile);
       setLoading(false);
@@ -55,7 +59,16 @@ export const useUserProfile = (address?: string) => {
       .then((userProfile) => {
         console.log("Profile loaded:", userProfile);
         if (userProfile) {
-          firebaseCache.set(cacheKey, userProfile);
+          // Only cache if not in initial period
+          if (!firebaseCache.shouldSkipCache(userProfile)) {
+            firebaseCache.set(cacheKey, userProfile);
+            console.log("Profile cached for address:", address);
+          } else {
+            console.log(
+              "Profile not cached (in initial period) for address:",
+              address
+            );
+          }
         }
         setProfile(userProfile);
         setLoading(false);

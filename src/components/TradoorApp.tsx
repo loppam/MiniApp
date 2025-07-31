@@ -78,7 +78,7 @@ export default function TradoorApp(
   // Use Firebase profile data or fallback to mock data
   const userStats = {
     address: address || "0xnotconnected",
-    points: userProfile?.totalPoints || "0",
+    points: userProfile?.totalPoints || 0,
     rank: userProfile?.currentRank || "0",
     tier: userProfile?.tier || "N/A",
   };

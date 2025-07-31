@@ -93,7 +93,7 @@ export function ProjectInfo({
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Points</span>
               <span className="text-sm font-bold">
-                {stats ? Math.round(stats.totalPoints / 1000) : 0}K
+                {stats ? (stats.totalPoints / 1000).toFixed(2) : "0.00"}K
               </span>
             </div>
           </CardContent>
@@ -113,7 +113,9 @@ export function ProjectInfo({
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Points</span>
               <span className="text-sm font-bold">
-                {userProfile?.totalPoints.toLocaleString() || "0"}
+                {userProfile?.totalPoints
+                  ? (userProfile.totalPoints / 1000).toFixed(2) + "K"
+                  : "0.00K"}
               </span>
             </div>
             <div className="flex justify-between items-center">

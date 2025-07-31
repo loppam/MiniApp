@@ -88,7 +88,7 @@ export function Leaderboard() {
                   </div>
                   <div className="text-right">
                     <div className="text-sm font-bold text-foreground">
-                      {Math.round(entry.points / 1000)}K
+                      {(entry.points / 1000).toFixed(2)}K
                     </div>
                     <div className="text-xs text-muted-foreground">
                       #{idx + 1}
