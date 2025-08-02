@@ -1,14 +1,19 @@
 import { useState, useEffect } from "react";
-import { userService, transactionService } from "~/lib/firebase-services";
-import { createRealtimeListeners } from "~/lib/firebase-services";
-import type {
+import {
   UserProfile,
   Transaction,
-  LeaderboardEntry,
-  PlatformStats,
   Achievement,
   Milestone,
+  PlatformStats,
+  LeaderboardEntry,
 } from "~/types/firebase";
+import {
+  userService,
+  transactionService,
+  achievementService,
+  milestoneService,
+} from "~/lib/firebase-services";
+import { createRealtimeListeners } from "~/lib/firebase-services";
 
 export function useUserProfile(address: string | undefined) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
@@ -224,23 +229,37 @@ export function useAchievements(address: string | undefined) {
       return;
     }
 
-    console.log("Loading achievements for address:", address);
+    console.log("Loading user achievements for address:", address);
     setLoading(true);
     setError(null);
 
-    // Set up real-time listener for achievements
-    const unsubscribe = createRealtimeListeners.onAchievementsChange(
-      (userAchievements: Achievement[]) => {
-        console.log("Achievements updated:", userAchievements);
-        setAchievements(userAchievements);
+    // Get user's unlocked achievements
+    const loadUserAchievements = async () => {
+      try {
+        const userAchievements = await userService.getUserAchievements(address);
+        console.log("User achievements loaded:", userAchievements);
+
+        // Get the full achievement details for unlocked achievements
+        const activeAchievements =
+          await achievementService.getActiveAchievements();
+        const unlockedAchievementIds = userAchievements.map(
+          (ua) => ua.achievementId
+        );
+
+        const unlockedAchievements = activeAchievements.filter((achievement) =>
+          unlockedAchievementIds.includes(achievement.id)
+        );
+
+        setAchievements(unlockedAchievements);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading user achievements:", error);
+        setError("Failed to load achievements");
         setLoading(false);
       }
-    );
-
-    return () => {
-      console.log("Cleaning up achievements listener for address:", address);
-      unsubscribe();
     };
+
+    loadUserAchievements();
   }, [address]);
 
   return {
@@ -266,19 +285,21 @@ export function useMilestones(address: string | undefined) {
     setLoading(true);
     setError(null);
 
-    // Set up real-time listener for milestones
-    const unsubscribe = createRealtimeListeners.onMilestonesChange(
-      (userMilestones: Milestone[]) => {
-        console.log("Milestones updated:", userMilestones);
-        setMilestones(userMilestones);
+    // Get all milestones (these are platform-wide, not user-specific)
+    const loadMilestones = async () => {
+      try {
+        const allMilestones = await milestoneService.getMilestones();
+        console.log("Milestones loaded:", allMilestones);
+        setMilestones(allMilestones);
+        setLoading(false);
+      } catch (error) {
+        console.error("Error loading milestones:", error);
+        setError("Failed to load milestones");
         setLoading(false);
       }
-    );
-
-    return () => {
-      console.log("Cleaning up milestones listener for address:", address);
-      unsubscribe();
     };
+
+    loadMilestones();
   }, [address]);
 
   return {
