@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/badge";
@@ -15,7 +15,7 @@ import {
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useUserProfile, useAchievements } from "~/hooks/useFirebase";
-import sdk from "@farcaster/miniapp-sdk";
+import sdk, { AddMiniApp } from "@farcaster/miniapp-sdk";
 
 const getTierColor = (tier: string) => {
   switch (tier) {
@@ -58,6 +58,7 @@ export function Profile() {
     error: achError,
   } = useAchievements(address);
   const [isSharing, setIsSharing] = useState(false);
+  const [isFrameAdded, setIsFrameAdded] = useState(false);
 
   const formatAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -100,6 +101,40 @@ Join me on Base chain's premier trading platform! 🚀
       setIsSharing(false);
     }
   };
+
+  const handleAddFrame = async () => {
+    try {
+      const result = await sdk.actions.addFrame();
+
+      if (result.notificationDetails) {
+        console.log(
+          "Frame added successfully with notification details:",
+          result.notificationDetails
+        );
+        setIsFrameAdded(true);
+      } else {
+        console.log(
+          "Frame added successfully, but no notification details received"
+        );
+        setIsFrameAdded(true);
+      }
+    } catch (error) {
+      if (error instanceof AddMiniApp.RejectedByUser) {
+        console.log("User rejected adding frame:", error.message);
+      } else if (error instanceof AddMiniApp.InvalidDomainManifest) {
+        console.log("Invalid domain manifest:", error.message);
+      } else {
+        console.error("Error adding frame:", error);
+      }
+    }
+  };
+
+  // Auto-add frame when component mounts and user is initialized
+  useEffect(() => {
+    if (profile && !isFrameAdded) {
+      handleAddFrame();
+    }
+  }, [profile, isFrameAdded]);
 
   if (loading || achLoading) {
     return (
