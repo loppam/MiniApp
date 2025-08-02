@@ -19,7 +19,7 @@ export function ProjectInfo({
   onNavigateToRankUp,
   onNavigateToProfile,
 }: ProjectInfoProps) {
-  const { isConnected } = useAccount();
+  const { address, isConnected } = useAccount();
   const {
     stats,
     loading: statsLoading,
@@ -29,13 +29,32 @@ export function ProjectInfo({
     milestones,
     loading: milestoneLoading,
     error: milestoneError,
-  } = useMilestones();
-  const { profile: userProfile } = useUserProfile();
+  } = useMilestones(address);
+  const {
+    profile: userProfile,
+    loading: profileLoading,
+    error: profileError,
+  } = useUserProfile(address);
 
   // Check if user has completed initial points allocation
   const hasCompletedInitialPoints = userProfile && userProfile.totalPoints > 0;
 
-  if (statsLoading || milestoneLoading) {
+  // Debug logging
+  console.log("ProjectInfo - User Profile:", {
+    address,
+    userProfile,
+    profileLoading,
+    profileError,
+    hasCompletedInitialPoints,
+  });
+
+  console.log("ProjectInfo - Platform Stats:", {
+    stats,
+    statsLoading,
+    statsError,
+  });
+
+  if (statsLoading || milestoneLoading || profileLoading) {
     return (
       <div className="space-y-4">
         <div className="text-center py-8">
@@ -48,7 +67,7 @@ export function ProjectInfo({
     );
   }
 
-  if (statsError || milestoneError) {
+  if (statsError || milestoneError || profileError) {
     return (
       <div className="space-y-4">
         <div className="text-center py-8">
@@ -203,28 +222,28 @@ export function ProjectInfo({
                   </Badge>
                 )}
               </div>
-              <p className="text-xs text-muted-foreground">+0.5 point</p>
+              <p className="text-xs text-muted-foreground">+5 points</p>
             </div>
             <div
               className="p-2 rounded-lg bg-accent/30 border border-border cursor-pointer hover:bg-accent/50 transition-colors"
               onClick={onNavigateToRankUp}
             >
               <h4 className="text-xs font-medium mb-1">pTradoor Trading</h4>
-              <p className="text-xs text-muted-foreground">+3 points/trade</p>
+              <p className="text-xs text-muted-foreground">+5 points/trade</p>
             </div>
             <div
               className="p-2 rounded-lg bg-accent/30 border border-border cursor-pointer hover:bg-accent/50 transition-colors"
               onClick={onNavigateToRankUp}
             >
               <h4 className="text-xs font-medium mb-1">Hold pTradoor</h4>
-              <p className="text-xs text-muted-foreground">+1 point/day</p>
+              <p className="text-xs text-muted-foreground">+10 points/day</p>
             </div>
             <div
               className="p-2 rounded-lg bg-accent/30 border border-border cursor-pointer hover:bg-accent/50 transition-colors"
               onClick={onNavigateToRankUp}
             >
               <h4 className="text-xs font-medium mb-1">Weekly Streak</h4>
-              <p className="text-xs text-muted-foreground">+50 bonus</p>
+              <p className="text-xs text-muted-foreground">+500 points</p>
             </div>
           </div>
         </CardContent>

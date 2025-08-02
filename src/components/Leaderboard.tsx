@@ -1,6 +1,6 @@
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Trophy, Medal, Award, Loader2 } from "lucide-react";
-import { useLeaderboard } from "~/hooks/useFirebase";
+import { useLeaderboard, useUserProfile } from "~/hooks/useFirebase";
 
 const getRankIcon = (rank: number) => {
   switch (rank) {
@@ -22,8 +22,35 @@ const getRankIcon = (rank: number) => {
 const formatAddress = (address: string) =>
   `${address.slice(0, 6)}...${address.slice(-4)}`;
 
+// Component to display user name with fallback to address
+function UserDisplay({ address }: { address: string }) {
+  const { profile } = useUserProfile(address);
+
+  if (profile?.username) {
+    return (
+      <div className="text-sm font-medium text-foreground">
+        {profile.username}
+      </div>
+    );
+  }
+
+  if (profile?.displayName) {
+    return (
+      <div className="text-sm font-medium text-foreground">
+        {profile.displayName}
+      </div>
+    );
+  }
+
+  return (
+    <div className="text-sm font-medium text-foreground">
+      {formatAddress(address)}
+    </div>
+  );
+}
+
 export function Leaderboard() {
-  const { leaderboard, loading, error } = useLeaderboard(10);
+  const { leaderboard, loading, error } = useLeaderboard(50);
 
   return (
     <div className="space-y-4">
@@ -38,7 +65,7 @@ export function Leaderboard() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Trophy className="h-4 w-4 text-yellow-500" />
-            Top 10 Traders
+            Top 50 Traders
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -70,7 +97,7 @@ export function Leaderboard() {
 
           {!loading && !error && leaderboard.length > 0 && (
             <div className="space-y-2">
-              {leaderboard.slice(0, 8).map((entry, idx) => (
+              {leaderboard.slice(0, 50).map((entry, idx) => (
                 <div
                   key={entry.userAddress}
                   className="flex items-center justify-between p-2 rounded-lg bg-accent/30 border border-border"
@@ -78,9 +105,7 @@ export function Leaderboard() {
                   <div className="flex items-center gap-2">
                     {getRankIcon(idx + 1)}
                     <div>
-                      <div className="text-sm font-medium text-foreground">
-                        {formatAddress(entry.userAddress)}
-                      </div>
+                      <UserDisplay address={entry.userAddress} />
                       <div className="text-xs text-muted-foreground">
                         {entry.transactions} txns
                       </div>

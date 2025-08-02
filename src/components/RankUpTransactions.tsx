@@ -12,11 +12,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { useAccount } from "wagmi";
-import {
-  useUserProfile,
-  useTransactions,
-  useTrading,
-} from "~/hooks/useFirebase";
+import { useUserProfile, useTransactions } from "~/hooks/useFirebase";
 import { Timestamp } from "firebase/firestore";
 
 const rankTiers = [
@@ -68,8 +64,7 @@ export function RankUpTransactions() {
     transactions,
     loading: txLoading,
     error: txError,
-  } = useTransactions(address, 10);
-  const { executeTrade } = useTrading();
+  } = useTransactions(address);
 
   const formatTime = (
     timestamp: Timestamp | Date | string | null | undefined
@@ -84,7 +79,8 @@ export function RankUpTransactions() {
     if (!address) return;
 
     try {
-      await executeTrade(type, amount, 0.045); // Mock price
+      console.log(`Executing ${type} trade for ${amount} pTradoor`);
+      // TODO: Implement actual trading logic
     } catch (error) {
       console.error("Trade failed:", error);
     }
@@ -176,7 +172,7 @@ export function RankUpTransactions() {
               <div className="flex justify-between items-center">
                 <span className="text-xs text-muted-foreground">Points</span>
                 <span className="text-sm font-bold">
-                  {profile.totalPoints.toLocaleString()}
+                  {(profile.totalPoints / 1000).toFixed(2)}K
                 </span>
               </div>
               <div className="flex justify-between items-center">
@@ -245,7 +241,7 @@ export function RankUpTransactions() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Coins className="h-4 w-4 text-blue-500" />
-            Trade pTradoor
+            Trade pTradoor {profile.hasMinted ? "x3" : "..."}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -261,7 +257,7 @@ export function RankUpTransactions() {
                 className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
                 onClick={() => handleTrade("buy", 100)}
               >
-                Buy (+5 pts)
+                Buy (+{profile.hasMinted ? "15" : "5"} pts)
               </Button>
             </div>
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
@@ -275,13 +271,13 @@ export function RankUpTransactions() {
                 className="w-full bg-red-600 hover:bg-red-700 text-white text-xs"
                 onClick={() => handleTrade("sell", 100)}
               >
-                Sell (+5 pts)
+                Sell (+{profile.hasMinted ? "15" : "5"} pts)
               </Button>
             </div>
           </div>
 
           <div className="text-center text-xs text-muted-foreground">
-            Each trade earns 5 points
+            Each trade earns {profile.hasMinted ? "15" : "5"} points
           </div>
         </CardContent>
       </Card>
@@ -348,12 +344,12 @@ export function RankUpTransactions() {
         </CardContent>
       </Card>
 
-      <div className="text-center">
+      {/* <div className="text-center">
         <Button className="bg-purple-600 hover:bg-purple-700 text-white">
           <Coins className="h-4 w-4 mr-2" />
           View All Transactions
         </Button>
-      </div>
+      </div> */}
     </div>
   );
 }

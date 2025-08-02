@@ -3,6 +3,7 @@ import { Button } from "./ui/Button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
 import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import {
   Trophy,
   Activity,
@@ -12,12 +13,15 @@ import {
   Target,
   Award,
   Share2,
-  Settings,
-  ExternalLink,
+  // Settings,
+  // ExternalLink,
   Loader2,
+  Download,
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useUserProfile, useAchievements } from "~/hooks/useFirebase";
+import { useState, useRef } from "react";
+import html2canvas from "html2canvas";
 
 const getRarityColor = (rarity: string) => {
   switch (rarity) {
@@ -39,16 +43,41 @@ export function Profile() {
   const { profile, loading, error } = useUserProfile(address);
   const {
     achievements,
-    userAchievements,
     loading: achLoading,
     error: achError,
   } = useAchievements(address);
+  const [showShareModal, setShowShareModal] = useState(false);
+  const shareCardRef = useRef<HTMLDivElement>(null);
 
   const formatAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
 
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString();
+
+  const handleShare = () => {
+    setShowShareModal(true);
+  };
+
+  const generateShareImage = async () => {
+    if (!shareCardRef.current || !profile) return;
+
+    try {
+      const canvas = await html2canvas(shareCardRef.current, {
+        backgroundColor: "#0f0f23",
+        scale: 2,
+        width: 400,
+        height: 600,
+      });
+
+      const link = document.createElement("a");
+      link.download = `tradoor-rank-${profile.currentRank}.png`;
+      link.href = canvas.toDataURL();
+      link.click();
+    } catch (error) {
+      console.error("Error generating image:", error);
+    }
+  };
 
   if (loading || achLoading) {
     return (
@@ -123,6 +152,9 @@ export function Profile() {
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
             <Avatar className="h-12 w-12">
+              {profile.avatarUrl && (
+                <img src={profile.avatarUrl} alt="Profile" />
+              )}
               <AvatarFallback className="bg-primary/10 text-primary">
                 {profile.address.slice(2, 4).toUpperCase()}
               </AvatarFallback>
@@ -130,7 +162,9 @@ export function Profile() {
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-sm font-bold">
-                  {formatAddress(profile.address)}
+                  {profile.username ||
+                    profile.displayName ||
+                    formatAddress(profile.address)}
                 </h3>
                 <Badge className="bg-gray-400/10 text-gray-400 border-gray-400/20 text-xs px-1.5 py-0">
                   {profile.tier}
@@ -149,12 +183,17 @@ export function Profile() {
               </div>
             </div>
             <div className="flex gap-1">
-              <Button variant="outline" size="sm" className="text-xs px-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs px-2"
+                onClick={handleShare}
+              >
                 <Share2 className="h-3 w-3" />
               </Button>
-              <Button variant="outline" size="sm" className="text-xs px-2">
+              {/* <Button variant="outline" size="sm" className="text-xs px-2">
                 <Settings className="h-3 w-3" />
-              </Button>
+              </Button> */}
             </div>
           </div>
         </CardHeader>
@@ -172,7 +211,7 @@ export function Profile() {
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Total</span>
               <span className="text-sm font-bold text-green-500">
-                {profile.totalPoints.toLocaleString()}
+                {(profile.totalPoints / 1000).toFixed(2)}K
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -204,12 +243,12 @@ export function Profile() {
             </div>
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">This Week</span>
-              <span className="text-sm font-bold">12</span>
+              <span className="text-sm font-bold">{profile.weeklyStreak}</span>
             </div>
-            <div className="flex justify-between items-center">
+            {/* <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Referrals</span>
               <span className="text-sm font-bold">{profile.referrals}</span>
-            </div>
+            </div> */}
           </CardContent>
         </Card>
 
@@ -235,7 +274,7 @@ export function Profile() {
             </div>
             <div className="text-center">
               <div className="text-sm font-bold text-green-500">
-                +{Math.floor(profile.ptradoorBalance * 0.001)}
+                +{profile.ptradoorBalance > 0 ? "10" : "0"}
               </div>
               <div className="text-xs text-muted-foreground">Daily</div>
             </div>
@@ -252,36 +291,30 @@ export function Profile() {
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
-            {achievements
-              .filter((a) => userAchievements.includes(a.id))
-              .slice(0, 3)
-              .map((achievement) => (
-                <div
-                  key={achievement.id}
-                  className="flex items-center gap-2 p-2 rounded-lg bg-accent/30 border border-border"
-                >
-                  <div className="text-lg">{achievement.icon}</div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-0.5">
-                      <h4 className="text-sm font-medium">
-                        {achievement.name}
-                      </h4>
-                      <Badge
-                        className={`${getRarityColor(
-                          achievement.rarity
-                        )} text-xs px-1.5 py-0`}
-                      >
-                        {achievement.rarity}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {achievement.description}
-                    </p>
+            {achievements.slice(0, 3).map((achievement) => (
+              <div
+                key={achievement.id}
+                className="flex items-center gap-2 p-2 rounded-lg bg-accent/30 border border-border"
+              >
+                <div className="text-lg">{achievement.icon}</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-0.5">
+                    <h4 className="text-sm font-medium">{achievement.name}</h4>
+                    <Badge
+                      className={`${getRarityColor(
+                        achievement.rarity
+                      )} text-xs px-1.5 py-0`}
+                    >
+                      {achievement.rarity}
+                    </Badge>
                   </div>
+                  <p className="text-xs text-muted-foreground">
+                    {achievement.description}
+                  </p>
                 </div>
-              ))}
-            {achievements.filter((a) => userAchievements.includes(a.id))
-              .length === 0 && (
+              </div>
+            ))}
+            {achievements.length === 0 && (
               <div className="text-center py-4">
                 <div className="text-sm text-muted-foreground">
                   No achievements yet
@@ -343,12 +376,87 @@ export function Profile() {
         </CardContent>
       </Card>
 
-      <div className="text-center">
+      {/* <div className="text-center">
         <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
           <ExternalLink className="h-4 w-4 mr-2" />
           View on Base Explorer
         </Button>
-      </div>
+      </div> */}
+
+      {/* Share Modal */}
+      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Trophy className="h-5 w-5 text-yellow-500" />
+              Share Your Ranking
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div
+              ref={shareCardRef}
+              className="text-center p-6 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-xl border border-border/50 backdrop-blur-sm"
+              style={{ width: "400px", height: "600px" }}
+            >
+              <div className="flex flex-col items-center justify-center h-full space-y-6">
+                <div className="text-6xl font-bold text-yellow-500 mb-4">
+                  🏆
+                </div>
+                <div className="text-4xl font-bold text-primary mb-2">
+                  #{profile?.currentRank}
+                </div>
+                <div className="text-lg text-muted-foreground mb-6">
+                  {profile?.username ||
+                    profile?.displayName ||
+                    formatAddress(profile?.address || "")}
+                </div>
+                <div className="grid grid-cols-3 gap-6 text-sm">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-500">
+                      {(profile?.totalPoints || 0 / 1000).toFixed(2)}K
+                    </div>
+                    <div className="text-muted-foreground">Points</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-500">
+                      {profile?.tier}
+                    </div>
+                    <div className="text-muted-foreground">Tier</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-purple-500">
+                      {profile?.totalTransactions}
+                    </div>
+                    <div className="text-muted-foreground">Txns</div>
+                  </div>
+                </div>
+                <div className="mt-8 text-center">
+                  <div className="text-lg font-bold text-primary">Tradoor</div>
+                  <div className="text-xs text-muted-foreground">
+                    Base Chain Trading
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-2">
+              <Button
+                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={generateShareImage}
+              >
+                <Download className="h-4 w-4 mr-2" />
+                Download Image
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => setShowShareModal(false)}
+              >
+                Close
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

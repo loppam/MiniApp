@@ -12,7 +12,7 @@ import sdk, { type Context } from "@farcaster/miniapp-sdk";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
-import { useUserAuth, useUserProfile } from "~/hooks/useFirebase";
+import { useUserProfile } from "~/hooks/useFirebase";
 
 export default function TradoorApp(
   { title }: { title?: string } = { title: "Tradoor" }
@@ -26,8 +26,7 @@ export default function TradoorApp(
   const { disconnect } = useDisconnect();
 
   // Firebase hooks
-  const { initializeUser } = useUserAuth();
-  const { profile: userProfile } = useUserProfile(address);
+  const { profile: userProfile, initializeUser } = useUserProfile(address);
 
   // Initialize Mini App SDK and Firebase user
   useEffect(() => {
@@ -46,7 +45,11 @@ export default function TradoorApp(
           // Wait a bit for the secure client to be available
           setTimeout(async () => {
             try {
-              await initializeUser(sdkContext);
+              await initializeUser({
+                address,
+                username: sdkContext.user?.username,
+                displayName: sdkContext.user?.displayName,
+              });
               console.log("User initialization completed successfully");
             } catch (initError) {
               console.error("User initialization failed:", initError);
@@ -138,7 +141,9 @@ export default function TradoorApp(
               </Badge>
               <div className="text-right">
                 <div className="text-xs font-medium">
-                  {formatAddress(userStats.address)}
+                  {userProfile?.username ||
+                    userProfile?.displayName ||
+                    formatAddress(userStats.address)}
                 </div>
                 <div className="text-xs text-muted-foreground flex items-center gap-1">
                   <Trophy className="h-3 w-3" />#{userStats.rank}

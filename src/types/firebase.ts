@@ -17,6 +17,7 @@ export interface UserProfile {
   weeklyStreak: number;
   referrals: number;
   achievements: string[];
+  hasMinted?: boolean;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   initial?: boolean;

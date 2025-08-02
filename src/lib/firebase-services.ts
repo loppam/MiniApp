@@ -123,6 +123,7 @@ export const userService = {
           weeklyStreak: 0,
           referrals: 0,
           achievements: [],
+          hasMinted: false,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           initial: true,
@@ -159,8 +160,8 @@ export const userService = {
         );
         console.log("Leaderboard updated successfully");
 
-        // Calculate and set initial rank
-        await this.updateUserRank(address);
+        // Recalculate all user ranks
+        await this.recalculateAllRanks();
         return;
       }
 
@@ -275,8 +276,8 @@ export const userService = {
         newTier
       );
 
-      // Update user rank
-      await this.updateUserRank(address);
+      // Recalculate all user ranks
+      await this.recalculateAllRanks();
     } catch (error) {
       console.error("Error updating user points:", error);
       throw error;
@@ -596,6 +597,9 @@ export const leaderboardService = {
         ptradoorBalance: userProfile.ptradoorBalance,
         lastUpdated: serverTimestamp(),
       });
+
+      // Recalculate all rankings after updating the entry
+      await this.recalculateRankings();
     } catch (error) {
       console.error("Error updating leaderboard entry:", error);
     }
@@ -633,6 +637,25 @@ export const platformStatsService = {
     } catch (error) {
       console.error("Error getting platform stats:", error);
       return null;
+    }
+  },
+
+  // Initialize platform stats if they don't exist
+  async initializePlatformStats(): Promise<void> {
+    try {
+      const statsDoc = await getDoc(doc(db, "platformStats", "current"));
+      if (!statsDoc.exists()) {
+        console.log("Initializing platform stats...");
+        await setDoc(doc(db, "platformStats", "current"), {
+          totalUsers: 0,
+          totalTransactions: 0,
+          totalPoints: 0,
+          lastUpdated: serverTimestamp(),
+        });
+        console.log("Platform stats initialized");
+      }
+    } catch (error) {
+      console.error("Error initializing platform stats:", error);
     }
   },
 
@@ -704,12 +727,34 @@ export const createRealtimeListeners = {
     });
   },
 
+  // Listen to user transactions changes
+  onUserTransactionsChange: (
+    address: string,
+    callback: (transactions: Transaction[]) => void
+  ) => {
+    const transactionsQuery = query(
+      collection(db, "transactions"),
+      where("address", "==", address),
+      orderBy("timestamp", "desc"),
+      limit(10)
+    );
+    return onSnapshot(transactionsQuery, (snapshot) => {
+      const transactions = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Transaction)
+      );
+      callback(transactions);
+    });
+  },
+
   // Listen to leaderboard changes
-  onLeaderboardChange: (callback: (entries: LeaderboardEntry[]) => void) => {
+  onLeaderboardChange: (
+    limitCount: number = 50,
+    callback: (entries: LeaderboardEntry[]) => void
+  ) => {
     const leaderboardQuery = query(
       collection(db, "leaderboard"),
       orderBy("points", "desc"),
-      limit(10)
+      limit(limitCount)
     );
     return onSnapshot(leaderboardQuery, (snapshot) => {
       const entries = snapshot.docs.map(
@@ -723,6 +768,35 @@ export const createRealtimeListeners = {
   onPlatformStatsChange: (callback: (stats: PlatformStats | null) => void) => {
     return onSnapshot(doc(db, "platformStats", "current"), (doc) => {
       callback(doc.exists() ? (doc.data() as PlatformStats) : null);
+    });
+  },
+
+  // Listen to achievements changes
+  onAchievementsChange: (callback: (achievements: Achievement[]) => void) => {
+    const achievementsQuery = query(
+      collection(db, "achievements"),
+      where("active", "==", true),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(achievementsQuery, (snapshot) => {
+      const achievements = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Achievement)
+      );
+      callback(achievements);
+    });
+  },
+
+  // Listen to milestones changes
+  onMilestonesChange: (callback: (milestones: Milestone[]) => void) => {
+    const milestonesQuery = query(
+      collection(db, "milestones"),
+      orderBy("createdAt", "desc")
+    );
+    return onSnapshot(milestonesQuery, (snapshot) => {
+      const milestones = snapshot.docs.map(
+        (doc) => ({ id: doc.id, ...doc.data() } as Milestone)
+      );
+      callback(milestones);
     });
   },
 };
