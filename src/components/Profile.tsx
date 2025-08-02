@@ -13,13 +13,14 @@ import {
   Target,
   Award,
   Share2,
-  // Settings,
+  Settings,
   // ExternalLink,
   Loader2,
   Download,
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useUserProfile, useAchievements } from "~/hooks/useFirebase";
+import { userService } from "~/lib/firebase-services";
 import { useState, useRef } from "react";
 import html2canvas from "html2canvas";
 
@@ -47,6 +48,7 @@ export function Profile() {
     error: achError,
   } = useAchievements(address);
   const [showShareModal, setShowShareModal] = useState(false);
+  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
   const shareCardRef = useRef<HTMLDivElement>(null);
 
   const formatAddress = (address: string) =>
@@ -57,6 +59,19 @@ export function Profile() {
 
   const handleShare = () => {
     setShowShareModal(true);
+  };
+
+  const handleUpdateAvatar = async () => {
+    if (!address) return;
+
+    setIsUpdatingAvatar(true);
+    try {
+      await userService.updateUserAvatar(address);
+    } catch (error) {
+      console.error("Failed to update avatar:", error);
+    } finally {
+      setIsUpdatingAvatar(false);
+    }
   };
 
   const generateShareImage = async () => {
@@ -191,9 +206,29 @@ export function Profile() {
               >
                 <Share2 className="h-3 w-3" />
               </Button>
-              {/* <Button variant="outline" size="sm" className="text-xs px-2">
-                <Settings className="h-3 w-3" />
-              </Button> */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs px-2"
+                onClick={handleUpdateAvatar}
+                disabled={isUpdatingAvatar}
+                title="Update avatar from Farcaster"
+              >
+                {isUpdatingAvatar ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current" />
+                ) : (
+                  <div className="h-3 w-3">🔄</div>
+                )}
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="p-1"
+                onClick={() => window.open("/admin", "_blank")}
+                title="Admin Panel"
+              >
+                <Settings className="h-4 w-4" />
+              </Button>
             </div>
           </div>
         </CardHeader>
@@ -413,7 +448,7 @@ export function Profile() {
                 <div className="grid grid-cols-3 gap-6 text-sm">
                   <div className="text-center">
                     <div className="text-2xl font-bold text-green-500">
-                      {(profile?.totalPoints || 0 / 1000).toFixed(2)}K
+                      {(profile?.totalPoints / 1000).toFixed(2)}K
                     </div>
                     <div className="text-muted-foreground">Points</div>
                   </div>

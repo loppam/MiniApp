@@ -3,6 +3,7 @@ import {
   getDoc,
   setDoc,
   updateDoc,
+  deleteDoc,
   collection,
   query,
   where,
@@ -26,6 +27,7 @@ import {
   Milestone,
 } from "~/types/firebase";
 import { BaseChainService, PointCalculation } from "./base-chain";
+import { FarcasterApiService } from "./farcaster-api";
 
 // Utility function to remove undefined values from objects
 function removeUndefinedValues<T extends Record<string, unknown>>(obj: T): T {
@@ -359,6 +361,30 @@ export const userService = {
       return [];
     }
   },
+
+  // Update user avatar from Farcaster API
+  async updateUserAvatar(address: string): Promise<void> {
+    try {
+      const userProfile = await this.getUserProfile(address);
+      if (!userProfile?.username) {
+        console.log("No username found for user:", address);
+        return;
+      }
+
+      const avatarUrl = await FarcasterApiService.getAvatarUrlByUsername(
+        userProfile.username
+      );
+      if (avatarUrl) {
+        await updateDoc(doc(db, "users", address), {
+          avatarUrl,
+          updatedAt: serverTimestamp(),
+        });
+        console.log("Updated avatar URL for user:", address);
+      }
+    } catch (error) {
+      console.error("Error updating user avatar:", error);
+    }
+  },
 };
 
 // Transaction Services
@@ -558,6 +584,34 @@ export const achievementService = {
       throw error;
     }
   },
+
+  // Update achievement (admin function)
+  async updateAchievement(
+    achievementId: string,
+    updates: Partial<Achievement>
+  ): Promise<void> {
+    try {
+      const achievementRef = doc(db, "achievements", achievementId);
+      await updateDoc(achievementRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error updating achievement:", error);
+      throw error;
+    }
+  },
+
+  // Delete achievement (admin function)
+  async deleteAchievement(achievementId: string): Promise<void> {
+    try {
+      const achievementRef = doc(db, "achievements", achievementId);
+      await deleteDoc(achievementRef);
+    } catch (error) {
+      console.error("Error deleting achievement:", error);
+      throw error;
+    }
+  },
 };
 
 // Leaderboard Services
@@ -701,6 +755,34 @@ export const milestoneService = {
       return docRef.id;
     } catch (error) {
       console.error("Error creating milestone:", error);
+      throw error;
+    }
+  },
+
+  // Update milestone (admin function)
+  async updateMilestone(
+    milestoneId: string,
+    updates: Partial<Milestone>
+  ): Promise<void> {
+    try {
+      const milestoneRef = doc(db, "milestones", milestoneId);
+      await updateDoc(milestoneRef, {
+        ...updates,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error updating milestone:", error);
+      throw error;
+    }
+  },
+
+  // Delete milestone (admin function)
+  async deleteMilestone(milestoneId: string): Promise<void> {
+    try {
+      const milestoneRef = doc(db, "milestones", milestoneId);
+      await deleteDoc(milestoneRef);
+    } catch (error) {
+      console.error("Error deleting milestone:", error);
       throw error;
     }
   },
