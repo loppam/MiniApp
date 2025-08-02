@@ -20,12 +20,12 @@ interface FarcasterApiResponse {
 }
 
 export class FarcasterApiService {
-  private static readonly API_BASE = "https://api.farcaster.xyz/v2";
+  private static readonly API_BASE = "/api/farcaster";
 
   // Get user data by FID
   static async getUserByFid(fid: number): Promise<FarcasterUser | null> {
     try {
-      const response = await fetch(`${this.API_BASE}/users/${fid}`);
+      const response = await fetch(`${this.API_BASE}?fid=${fid}`);
 
       if (!response.ok) {
         console.error(`Farcaster API error: ${response.status}`);
@@ -46,7 +46,7 @@ export class FarcasterApiService {
   ): Promise<FarcasterUser | null> {
     try {
       const response = await fetch(
-        `${this.API_BASE}/users?username=${username}`
+        `${this.API_BASE}?username=${encodeURIComponent(username)}`
       );
 
       if (!response.ok) {

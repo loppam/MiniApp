@@ -15,7 +15,6 @@ import {
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useUserProfile, useAchievements } from "~/hooks/useFirebase";
-import { userService } from "~/lib/firebase-services";
 import sdk from "@farcaster/miniapp-sdk";
 
 const getTierColor = (tier: string) => {
@@ -59,7 +58,6 @@ export function Profile() {
     error: achError,
   } = useAchievements(address);
   const [isSharing, setIsSharing] = useState(false);
-  const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
 
   const formatAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -100,19 +98,6 @@ Join me on Base chain's premier trading platform! 🚀
       console.error("Error sharing ranking:", error);
     } finally {
       setIsSharing(false);
-    }
-  };
-
-  const handleUpdateAvatar = async () => {
-    if (!address) return;
-
-    setIsUpdatingAvatar(true);
-    try {
-      await userService.updateUserAvatar(address);
-    } catch (error) {
-      console.error("Failed to update avatar:", error);
-    } finally {
-      setIsUpdatingAvatar(false);
     }
   };
 
@@ -230,29 +215,18 @@ Join me on Base chain's premier trading platform! 🚀
                   <Share2 className="h-3 w-3" />
                 )}
               </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="text-xs px-2"
-                onClick={handleUpdateAvatar}
-                disabled={isUpdatingAvatar}
-                title="Update avatar from Farcaster"
-              >
-                {isUpdatingAvatar ? (
-                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current" />
-                ) : (
-                  <div className="h-3 w-3">🔄</div>
-                )}
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                className="p-1"
-                onClick={() => window.open("/admin", "_blank")}
-                title="Admin Panel"
-              >
-                <User className="h-4 w-4" />
-              </Button>
+              {(address === "0x065efb8cbd9669648f4d765b6d25304f66419c47" ||
+                address === "0x90554A05862879c77e64d154e0A4Eb92e48eC384") && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="p-1"
+                  onClick={() => window.open("/admin", "_blank")}
+                  title="Admin Panel"
+                >
+                  <User className="h-4 w-4" />
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
