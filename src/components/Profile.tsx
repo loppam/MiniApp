@@ -1,41 +1,52 @@
+import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
-import { Avatar, AvatarFallback } from "./ui/avatar";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "./ui/dialog";
 import {
   Trophy,
-  Activity,
-  Coins,
-  Calendar,
   TrendingUp,
+  Share2,
+  User,
+  Calendar,
   Target,
   Award,
-  Share2,
-  Settings,
-  // ExternalLink,
   Loader2,
-  Download,
 } from "lucide-react";
 import { useAccount } from "wagmi";
 import { useUserProfile, useAchievements } from "~/hooks/useFirebase";
 import { userService } from "~/lib/firebase-services";
-import { useState, useRef } from "react";
-import html2canvas from "html2canvas";
+import sdk from "@farcaster/miniapp-sdk";
+
+const getTierColor = (tier: string) => {
+  switch (tier) {
+    case "Bronze":
+      return "text-amber-600 bg-amber-600/10 border-amber-600/20";
+    case "Silver":
+      return "text-gray-400 bg-gray-400/10 border-gray-400/20";
+    case "Gold":
+      return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
+    case "Platinum":
+      return "text-blue-400 bg-blue-400/10 border-blue-400/20";
+    case "Diamond":
+      return "text-purple-500 bg-purple-500/10 border-purple-500/20";
+    default:
+      return "text-gray-500 bg-gray-500/10 border-gray-500/20";
+  }
+};
 
 const getRarityColor = (rarity: string) => {
   switch (rarity) {
     case "common":
-      return "text-gray-400 bg-gray-400/10 border-gray-400/20";
+      return "text-gray-500";
     case "rare":
-      return "text-blue-400 bg-blue-400/10 border-blue-400/20";
+      return "text-blue-500";
     case "epic":
-      return "text-purple-500 bg-purple-500/10 border-purple-500/20";
+      return "text-purple-500";
     case "legendary":
-      return "text-yellow-500 bg-yellow-500/10 border-yellow-500/20";
+      return "text-yellow-500";
     default:
-      return "text-gray-400 bg-gray-400/10 border-gray-400/20";
+      return "text-gray-500";
   }
 };
 
@@ -47,9 +58,8 @@ export function Profile() {
     loading: achLoading,
     error: achError,
   } = useAchievements(address);
-  const [showShareModal, setShowShareModal] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
   const [isUpdatingAvatar, setIsUpdatingAvatar] = useState(false);
-  const shareCardRef = useRef<HTMLDivElement>(null);
 
   const formatAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -57,8 +67,40 @@ export function Profile() {
   const formatDate = (dateString: string) =>
     new Date(dateString).toLocaleDateString();
 
-  const handleShare = () => {
-    setShowShareModal(true);
+  const handleShare = async () => {
+    if (!profile) return;
+
+    setIsSharing(true);
+    try {
+      const appUrl =
+        process.env.NEXT_PUBLIC_URL || "https://tradoor.vercel.app";
+
+      const castText = `🏆 Just ranked #${
+        profile.currentRank
+      } on Tradoor with ${(profile.totalPoints / 1000).toFixed(1)}K points! 
+
+Join me on Base chain's premier trading platform! 🚀
+
+#Tradoor #Base #Trading`;
+
+      // Use the simple SDK composeCast action - no referral tracking
+      const result = await sdk.actions.composeCast({
+        text: castText,
+        embeds: [appUrl],
+      });
+
+      if (result?.cast) {
+        console.log("Successfully shared ranking on Farcaster!");
+        console.log("Cast hash:", result.cast.hash);
+        // You could show a success toast here
+      } else {
+        console.log("User cancelled the cast or it failed");
+      }
+    } catch (error) {
+      console.error("Error sharing ranking:", error);
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   const handleUpdateAvatar = async () => {
@@ -71,26 +113,6 @@ export function Profile() {
       console.error("Failed to update avatar:", error);
     } finally {
       setIsUpdatingAvatar(false);
-    }
-  };
-
-  const generateShareImage = async () => {
-    if (!shareCardRef.current || !profile) return;
-
-    try {
-      const canvas = await html2canvas(shareCardRef.current, {
-        backgroundColor: "#0f0f23",
-        scale: 2,
-        width: 400,
-        height: 600,
-      });
-
-      const link = document.createElement("a");
-      link.download = `tradoor-rank-${profile.currentRank}.png`;
-      link.href = canvas.toDataURL();
-      link.click();
-    } catch (error) {
-      console.error("Error generating image:", error);
     }
   };
 
@@ -166,14 +188,6 @@ export function Profile() {
       <Card className="bg-card border-border">
         <CardHeader className="pb-3">
           <div className="flex items-center gap-3">
-            <Avatar className="h-12 w-12">
-              {profile.avatarUrl && (
-                <img src={profile.avatarUrl} alt="Profile" />
-              )}
-              <AvatarFallback className="bg-primary/10 text-primary">
-                {profile.address.slice(2, 4).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <h3 className="text-sm font-bold">
@@ -181,7 +195,11 @@ export function Profile() {
                     profile.displayName ||
                     formatAddress(profile.address)}
                 </h3>
-                <Badge className="bg-gray-400/10 text-gray-400 border-gray-400/20 text-xs px-1.5 py-0">
+                <Badge
+                  className={`${getTierColor(
+                    profile.tier
+                  )} text-xs px-1.5 py-0`}
+                >
                   {profile.tier}
                 </Badge>
               </div>
@@ -203,8 +221,14 @@ export function Profile() {
                 size="sm"
                 className="text-xs px-2"
                 onClick={handleShare}
+                disabled={isSharing}
+                title="Share ranking on Farcaster"
               >
-                <Share2 className="h-3 w-3" />
+                {isSharing ? (
+                  <div className="animate-spin rounded-full h-3 w-3 border-b-2 border-current" />
+                ) : (
+                  <Share2 className="h-3 w-3" />
+                )}
               </Button>
               <Button
                 variant="outline"
@@ -227,7 +251,7 @@ export function Profile() {
                 onClick={() => window.open("/admin", "_blank")}
                 title="Admin Panel"
               >
-                <Settings className="h-4 w-4" />
+                <User className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -263,7 +287,7 @@ export function Profile() {
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-1 text-sm">
-              <Activity className="h-4 w-4 text-blue-500" />
+              <User className="h-4 w-4 text-blue-500" />
               Activity
             </CardTitle>
           </CardHeader>
@@ -290,7 +314,7 @@ export function Profile() {
         <Card className="bg-card border-border col-span-2">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-1 text-sm">
-              <Coins className="h-4 w-4 text-purple-500" />
+              <User className="h-4 w-4 text-purple-500" />
               pTradoor Holdings
             </CardTitle>
           </CardHeader>
@@ -417,81 +441,6 @@ export function Profile() {
           View on Base Explorer
         </Button>
       </div> */}
-
-      {/* Share Modal */}
-      <Dialog open={showShareModal} onOpenChange={setShowShareModal}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
-              <Trophy className="h-5 w-5 text-yellow-500" />
-              Share Your Ranking
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div
-              ref={shareCardRef}
-              className="text-center p-6 bg-gradient-to-br from-blue-600/20 via-purple-600/20 to-pink-600/20 rounded-xl border border-border/50 backdrop-blur-sm"
-              style={{ width: "400px", height: "600px" }}
-            >
-              <div className="flex flex-col items-center justify-center h-full space-y-6">
-                <div className="text-6xl font-bold text-yellow-500 mb-4">
-                  🏆
-                </div>
-                <div className="text-4xl font-bold text-primary mb-2">
-                  #{profile?.currentRank}
-                </div>
-                <div className="text-lg text-muted-foreground mb-6">
-                  {profile?.username ||
-                    profile?.displayName ||
-                    formatAddress(profile?.address || "")}
-                </div>
-                <div className="grid grid-cols-3 gap-6 text-sm">
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-green-500">
-                      {(profile?.totalPoints / 1000).toFixed(2)}K
-                    </div>
-                    <div className="text-muted-foreground">Points</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-blue-500">
-                      {profile?.tier}
-                    </div>
-                    <div className="text-muted-foreground">Tier</div>
-                  </div>
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-purple-500">
-                      {profile?.totalTransactions}
-                    </div>
-                    <div className="text-muted-foreground">Txns</div>
-                  </div>
-                </div>
-                <div className="mt-8 text-center">
-                  <div className="text-lg font-bold text-primary">Tradoor</div>
-                  <div className="text-xs text-muted-foreground">
-                    Base Chain Trading
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex gap-2">
-              <Button
-                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
-                onClick={generateShareImage}
-              >
-                <Download className="h-4 w-4 mr-2" />
-                Download Image
-              </Button>
-              <Button
-                variant="outline"
-                onClick={() => setShowShareModal(false)}
-              >
-                Close
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
