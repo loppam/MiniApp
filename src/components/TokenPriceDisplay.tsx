@@ -4,6 +4,9 @@ import React, { useEffect, useState } from "react";
 import { PriceService } from "~/lib/price-service";
 import { sdk } from "@farcaster/miniapp-sdk";
 
+// pTradoor token contract address on Base
+const PTRADOOR_TOKEN_ADDRESS = "0x4bBFD120d9f352A0BEd7a014bd67913a2007a878";
+
 interface TokenPriceDisplayProps {
   showDetails?: boolean;
   refreshInterval?: number; // in milliseconds
@@ -32,7 +35,7 @@ export function TokenPriceDisplay({
       try {
         const context = await sdk.context;
         setFarcasterConnected(!!context);
-      } catch (err) {
+      } catch {
         setFarcasterConnected(false);
       }
 
@@ -175,7 +178,7 @@ export function TokenPriceDisplay({
         )}
       </div>
 
-      <div className="mt-4 pt-3 border-t border-gray-100">
+      <div className="mt-4 pt-3 border-t border-gray-100 space-y-2">
         <button
           onClick={fetchPrices}
           disabled={loading}
@@ -183,6 +186,25 @@ export function TokenPriceDisplay({
         >
           {loading ? "Refreshing..." : "Refresh Prices"}
         </button>
+        
+        {farcasterConnected && (
+          <button
+            onClick={async () => {
+              try {
+                await PriceService.openSwapForm(
+                  "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // ETH
+                  `eip155:8453/erc20:${PTRADOOR_TOKEN_ADDRESS}`, // pTradoor
+                  "1000000000000000000" // 1 ETH
+                );
+              } catch (error) {
+                console.error("Error opening swap form:", error);
+              }
+            }}
+            className="w-full bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors"
+          >
+            Open Swap Form
+          </button>
+        )}
       </div>
     </div>
   );

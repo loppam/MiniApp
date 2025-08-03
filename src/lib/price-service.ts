@@ -45,18 +45,18 @@ export class PriceService {
   }
 
   /**
-   * Get pTradoor token price using Farcaster wallet integration
+   * Get pTradoor token price using real-time DEX data
    */
   static async getPTradoorPrice(): Promise<number> {
     try {
-      // Try to get price from Farcaster wallet first
-      const farcasterPrice = await this.getPTradoorPriceFromFarcaster();
-      if (farcasterPrice) {
-        return farcasterPrice;
+      // Try to get price from Uniswap V3 on Base chain
+      const uniswapPrice = await this.getUniswapPrice();
+      if (uniswapPrice) {
+        return uniswapPrice;
       }
 
-      // Fallback to DEX price feeds
-      const dexPrice = await this.getPTradoorPriceFromDEX();
+      // Try to get price from other DEX aggregators
+      const dexPrice = await this.getDEXPrice();
       if (dexPrice) {
         return dexPrice;
       }
@@ -70,114 +70,23 @@ export class PriceService {
   }
 
   /**
-   * Get pTradoor price from Farcaster wallet integration
-   */
-  private static async getPTradoorPriceFromFarcaster(): Promise<number | null> {
-    try {
-      // Check if we're in a Farcaster environment
-      if (typeof window !== "undefined" && "farcaster" in window) {
-        // Try to get token price from Farcaster wallet
-        const context = await sdk.context;
-
-        if (context) {
-          // Use Farcaster's token price API if available
-          // This would typically be available through the wallet's price feed
-          // Note: These methods may not exist in the current SDK version
-          // They're placeholders for future SDK updates
-          try {
-            // @ts-expect-error - Future SDK method
-            const tokenInfo = await sdk.getTokenInfo?.(PTRADOOR_TOKEN_ADDRESS);
-
-            if (tokenInfo && tokenInfo.price) {
-              return tokenInfo.price;
-            }
-          } catch {
-            console.log(
-              "Token info method not available in current SDK version"
-            );
-          }
-        }
-      }
-
-      // Try to get price from Warpcast's price feed
-      const warpcastPrice = await this.getPriceFromWarpcast();
-      if (warpcastPrice) {
-        return warpcastPrice;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error getting price from Farcaster:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Get price from Warpcast's price feed
-   */
-  private static async getPriceFromWarpcast(): Promise<number | null> {
-    try {
-      // Warpcast might expose token prices through their API
-      // This is a placeholder for the actual implementation
-      const response = await fetch(
-        `https://api.warpcast.com/v2/token-price?address=${PTRADOOR_TOKEN_ADDRESS}`,
-        {
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        return data.price || null;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error fetching price from Warpcast:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Get pTradoor price from DEX price feeds
-   */
-  private static async getPTradoorPriceFromDEX(): Promise<number | null> {
-    try {
-      // Try Uniswap V3 price feed
-      const uniswapPrice = await this.getUniswapPrice();
-      if (uniswapPrice) {
-        return uniswapPrice;
-      }
-
-      // Try other DEX price feeds
-      const dexPrice = await this.getDEXPrice();
-      if (dexPrice) {
-        return dexPrice;
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error getting DEX price:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Get price from Uniswap V3
+   * Get price from Uniswap V3 on Base chain
    */
   private static async getUniswapPrice(): Promise<number | null> {
     try {
-      // Uniswap V3 price feed for Base chain
+      // Use Uniswap V3 API to get price quote
       const response = await fetch(
         `https://api.uniswap.org/v1/quote?tokenInAddress=0x4200000000000000000000000000000000000006&tokenOutAddress=${PTRADOOR_TOKEN_ADDRESS}&amount=1000000000000000000&fee=3000&slippageTolerance=50`
       );
 
       if (response.ok) {
         const data = await response.json();
-        // Convert quote to price
-        return data.quote ? parseFloat(data.quote) / 1e18 : null;
+        if (data.quote) {
+          // Convert quote to price
+          const ethAmount = 1; // 1 ETH
+          const tokenAmount = parseFloat(data.quote) / 1e18;
+          return ethAmount / tokenAmount;
+        }
       }
 
       return null;
@@ -188,25 +97,27 @@ export class PriceService {
   }
 
   /**
-   * Get price from other DEX aggregators
+   * Get price from DEX aggregators
    */
   private static async getDEXPrice(): Promise<number | null> {
     try {
-      // Try 1inch or other DEX aggregators
+      // Try 1inch API for price quote
       const response = await fetch(
         `https://api.1inch.dev/swap/v5.2/8453/quote?src=0x4200000000000000000000000000000000000006&dst=${PTRADOOR_TOKEN_ADDRESS}&amount=1000000000000000000`,
         {
           headers: {
-            Authorization: "Bearer YOUR_1INCH_API_KEY", // Would need API key
+            Authorization: "Bearer YOUR_1INCH_API_KEY", // Would need API key for production
           },
         }
       );
 
       if (response.ok) {
         const data = await response.json();
-        return data.toTokenAmount
-          ? parseFloat(data.toTokenAmount) / 1e18
-          : null;
+        if (data.toTokenAmount) {
+          const ethAmount = 1; // 1 ETH
+          const tokenAmount = parseFloat(data.toTokenAmount) / 1e18;
+          return ethAmount / tokenAmount;
+        }
       }
 
       return null;
@@ -258,7 +169,7 @@ export class PriceService {
         ethPrice,
         pTradoorPrice,
         lastUpdated: Date.now(),
-        source: "farcaster_wallet",
+        source: "dex_aggregator",
       };
 
       this.cache.set(cacheKey, { data: priceData, timestamp: Date.now() });
@@ -341,17 +252,11 @@ export class PriceService {
       const ethPrice = data.ethereum?.usd || 3000;
       const ethChange24h = data.ethereum?.usd_24h_change || 0;
 
-      // Get pTradoor price from Farcaster wallet
+      // Get pTradoor price from DEX
       const pTradoorPrice = await this.getPTradoorPrice();
 
-      // Try to get 24h change from Farcaster wallet or simulate
-      let pTradoorChange24h = 0;
-      try {
-        // This would ideally come from the wallet's price feed
-        pTradoorChange24h = (Math.random() - 0.5) * 10; // ±5% change for now
-      } catch (error) {
-        console.error("Error getting pTradoor 24h change:", error);
-      }
+      // For now, simulate 24h change since it's not available from DEX APIs
+      const pTradoorChange24h = (Math.random() - 0.5) * 10; // ±5% change
 
       return {
         ethPrice,
@@ -373,34 +278,52 @@ export class PriceService {
   }
 
   /**
-   * Get token balance from Farcaster wallet
+   * Open swap form for pTradoor token using Farcaster wallet
+   * This uses the actual swapToken action as documented
    */
-  static async getTokenBalanceFromFarcaster(
-    userAddress: string
-  ): Promise<number> {
+  static async openSwapForm(
+    sellToken: string,
+    buyToken: string,
+    sellAmount: string
+  ): Promise<void> {
     try {
       const context = await sdk.context;
 
-      if (context) {
-        // Get token balance from Farcaster wallet
-        // Note: This method may not exist in the current SDK version
-        try {
-          // @ts-expect-error - Future SDK method
-          const balance = await sdk.getTokenBalance?.(
-            PTRADOOR_TOKEN_ADDRESS,
-            userAddress
-          );
-          return balance || 0;
-        } catch {
-          console.log(
-            "Token balance method not available in current SDK version"
-          );
-        }
+      if (!context) {
+        throw new Error("Farcaster context not available");
       }
 
-      return 0;
+      // Open the swap form with pre-filled tokens
+      // This will open the user's wallet swap interface
+      await sdk.actions.swapToken({
+        sellToken,
+        buyToken,
+        sellAmount,
+      });
     } catch (error) {
-      console.error("Error getting token balance from Farcaster:", error);
+      console.error("Error opening swap form:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get token balance from Farcaster wallet
+   * Note: This would require additional wallet APIs not currently available
+   */
+  static async getTokenBalanceFromFarcaster(): Promise<number> {
+    try {
+      const context = await sdk.context;
+
+      if (!context) {
+        return 0;
+      }
+
+      // Note: The current SDK doesn't provide direct balance checking
+      // This would need to be implemented through other means
+      // For now, return 0 as a placeholder
+      return 0;
+    } catch {
+      console.error("Error getting token balance from Farcaster");
       return 0;
     }
   }
