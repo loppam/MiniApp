@@ -8,7 +8,7 @@ import { Profile } from "./Profile";
 import { Badge } from "./ui/badge";
 import { Button } from "./ui/Button";
 import { Home, TrendingUp, User, Zap, Trophy } from "lucide-react";
-import sdk, { type Context } from "@farcaster/miniapp-sdk";
+import sdk, { type Context, AddMiniApp } from "@farcaster/miniapp-sdk";
 import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
@@ -20,6 +20,7 @@ export default function TradoorApp(
   const [activeTab, setActiveTab] = useState("home");
   const [isSDKLoaded, setIsSDKLoaded] = useState(false);
   const [, setContext] = useState<Context.MiniAppContext>();
+  const [isFrameAdded, setIsFrameAdded] = useState(false);
 
   const { address, isConnected } = useAccount();
   const { connect } = useConnect();
@@ -27,6 +28,40 @@ export default function TradoorApp(
 
   // Firebase hooks
   const { profile: userProfile, initializeUser } = useUserProfile(address);
+
+  const handleAddFrame = useCallback(async () => {
+    try {
+      const result = await sdk.actions.addFrame();
+
+      if (result.notificationDetails) {
+        console.log(
+          "Frame added successfully with notification details:",
+          result.notificationDetails
+        );
+        setIsFrameAdded(true);
+      } else {
+        console.log(
+          "Frame added successfully, but no notification details received"
+        );
+        setIsFrameAdded(true);
+      }
+    } catch (error) {
+      if (error instanceof AddMiniApp.RejectedByUser) {
+        console.log("User rejected adding frame:", error.message);
+      } else if (error instanceof AddMiniApp.InvalidDomainManifest) {
+        console.log("Invalid domain manifest:", error.message);
+      } else {
+        console.error("Error adding frame:", error);
+      }
+    }
+  }, []);
+
+  // Auto-add frame when SDK is loaded and user is connected
+  useEffect(() => {
+    if (isSDKLoaded && isConnected && !isFrameAdded) {
+      handleAddFrame();
+    }
+  }, [isSDKLoaded, isConnected, isFrameAdded, handleAddFrame]);
 
   // Initialize Mini App SDK and Firebase user
   useEffect(() => {

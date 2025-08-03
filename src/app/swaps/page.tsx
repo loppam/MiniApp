@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { sdk } from '@farcaster/miniapp-sdk';
+import TokenPriceDisplay from '~/components/TokenPriceDisplay';
 
 export default function SwapsPage() {
   const [isSwapping, setIsSwapping] = useState(false);
@@ -71,6 +72,11 @@ export default function SwapsPage() {
     <main className="min-h-screen flex flex-col items-center justify-between p-24">
       <div className="z-10 w-full max-w-5xl items-center justify-between font-mono text-sm">
         <p className="text-center mb-8 text-lg">Swap & Send on Base</p>
+      </div>
+
+      {/* Token Price Display */}
+      <div className="w-full max-w-md mb-8">
+        <TokenPriceDisplay showDetails={true} refreshInterval={30000} />
       </div>
 
       <div className="flex items-center justify-center gap-8">

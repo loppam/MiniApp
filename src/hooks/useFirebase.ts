@@ -64,7 +64,7 @@ export function useUserProfile(address: string | undefined) {
     address: string;
     username?: string;
     displayName?: string;
-    avatarUrl?: string;
+    pfpUrl?: string;
   }) => {
     try {
       await userService.upsertUserProfile(userData.address, userData);

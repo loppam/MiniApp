@@ -44,7 +44,7 @@ interface UserContext {
   fid?: number;
   username?: string;
   displayName?: string;
-  avatarUrl?: string;
+  pfpUrl?: string;
 }
 
 interface ContextData {
@@ -112,7 +112,7 @@ export const userService = {
           fid: context?.user?.fid,
           username: context?.user?.username,
           displayName: context?.user?.displayName,
-          avatarUrl: context?.user?.avatarUrl,
+          pfpUrl: context?.user?.pfpUrl,
           joinDate: serverTimestamp(),
           lastActive: serverTimestamp(),
           tier: calculateTier(initialPoints.points),
@@ -435,6 +435,29 @@ export const transactionService = {
     } catch (error) {
       console.error("Error getting recent transactions:", error);
       return [];
+    }
+  },
+
+  // Get transaction by hash
+  async getTransactionByHash(txHash: string): Promise<Transaction | null> {
+    try {
+      const transactionsQuery = query(
+        collection(db, "transactions"),
+        where("txHash", "==", txHash)
+      );
+      const snapshot = await getDocs(transactionsQuery);
+
+      if (snapshot.empty) {
+        return null;
+      }
+
+      return {
+        id: snapshot.docs[0].id,
+        ...snapshot.docs[0].data(),
+      } as Transaction;
+    } catch (error) {
+      console.error("Error getting transaction by hash:", error);
+      return null;
     }
   },
 };

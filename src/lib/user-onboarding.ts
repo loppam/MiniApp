@@ -6,7 +6,7 @@ interface UserContext {
   fid?: number;
   username?: string;
   displayName?: string;
-  avatarUrl?: string;
+  pfpUrl?: string;
 }
 
 interface ContextData {
@@ -150,7 +150,7 @@ export class UserOnboardingService {
         fid: context?.user?.fid,
         username: context?.user?.username,
         displayName: context?.user?.displayName,
-        avatarUrl: context?.user?.avatarUrl,
+        pfpUrl: context?.user?.pfpUrl,
       };
 
       await userService.upsertUserProfile(address, farcasterData, context);

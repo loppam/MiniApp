@@ -2,10 +2,13 @@
 
 import dynamic from "next/dynamic";
 
-import SolanaProvider from '~/components/providers/SolanaProvider'
+import SolanaProvider from "~/components/providers/SolanaProvider";
 
 const WagmiProvider = dynamic(
-  () => import("~/components/providers/WagmiProvider"),
+  () =>
+    import("~/components/providers/WagmiProvider").then((mod) => ({
+      default: mod.WagmiConfig,
+    })),
   {
     ssr: false,
   }
@@ -14,9 +17,7 @@ const WagmiProvider = dynamic(
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <WagmiProvider>
-      <SolanaProvider>
-        {children}
-      </SolanaProvider>
+      <SolanaProvider>{children}</SolanaProvider>
     </WagmiProvider>
   );
 }

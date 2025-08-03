@@ -11,9 +11,16 @@ import {
   CheckCircle,
   Loader2,
 } from "lucide-react";
-import { useAccount } from "wagmi";
+import {
+  useAccount,
+  useSendTransaction,
+  useWaitForTransactionReceipt,
+} from "wagmi";
 import { useUserProfile, useTransactions } from "~/hooks/useFirebase";
 import { Timestamp } from "firebase/firestore";
+import { useState, useCallback, useEffect } from "react";
+import { TradingSystem } from "~/lib/trading-system";
+import { DynamicTradingService } from "~/lib/dynamic-trading";
 
 const rankTiers = [
   {
@@ -66,6 +73,56 @@ export function RankUpTransactions() {
     error: txError,
   } = useTransactions(address);
 
+  // Market data state
+  const [marketData, setMarketData] = useState<{
+    pTradoorPrice: number;
+    ethPrice: number;
+    estimatedTokens: number;
+  }>({
+    pTradoorPrice: 0.045,
+    ethPrice: 3000,
+    estimatedTokens: 22.22,
+  });
+
+  // Transaction state
+  const [tradeState, setTradeState] = useState<{
+    status: "idle" | "pending" | "success" | "error";
+    type?: "buy" | "sell";
+    error?: string;
+    hash?: string;
+    pointsEarned?: number;
+    estimatedTokens?: number;
+  }>({ status: "idle" });
+
+  const { sendTransaction, isPending: isSendTxPending } = useSendTransaction();
+
+  const { isLoading: isConfirming } = useWaitForTransactionReceipt({
+    hash: tradeState.hash as `0x${string}`,
+  });
+
+  // Fetch market data on component mount
+  useEffect(() => {
+    const fetchMarketData = async () => {
+      try {
+        const data = await DynamicTradingService.getMarketData();
+        const estimatedTokens =
+          await DynamicTradingService.calculateTokenAmount(1);
+        setMarketData({
+          pTradoorPrice: data.pTradoorPrice,
+          ethPrice: data.ethPrice,
+          estimatedTokens,
+        });
+      } catch (error) {
+        console.error("Error fetching market data:", error);
+      }
+    };
+
+    fetchMarketData();
+    // Refresh market data every 30 seconds
+    const interval = setInterval(fetchMarketData, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
   const formatTime = (
     timestamp: Timestamp | Date | string | null | undefined
   ) => {
@@ -75,16 +132,111 @@ export function RankUpTransactions() {
     return date.toLocaleString();
   };
 
-  const handleTrade = async (type: "buy" | "sell", amount: number) => {
-    if (!address) return;
+  const handleDynamicTrade = useCallback(
+    async (type: "buy" | "sell") => {
+      if (!address || !isConnected) {
+        setTradeState({
+          status: "error",
+          error: "Wallet not connected",
+        });
+        return;
+      }
 
-    try {
-      console.log(`Executing ${type} trade for ${amount} pTradoor`);
-      // TODO: Implement actual trading logic
-    } catch (error) {
-      console.error("Trade failed:", error);
-    }
-  };
+      setTradeState({
+        status: "pending",
+        type,
+      });
+
+      try {
+        console.log(`Executing dynamic $1 ${type} trade`);
+
+        // Get dynamic trade transaction(s)
+        const tradeResult = await DynamicTradingService.executeDynamicTrade({
+          userAddress: address,
+          type,
+          usdAmount: 1, // Always $1
+        });
+
+        if (!tradeResult.success) {
+          setTradeState({
+            status: "error",
+            type,
+            error: tradeResult.error || "Trade preparation failed",
+          });
+          return;
+        }
+
+        // Execute transactions sequentially (since batch calls might not be available)
+        let lastHash: string | undefined;
+
+        for (const transaction of tradeResult.transactions) {
+          await new Promise<void>((resolve, reject) => {
+            sendTransaction(
+              {
+                to: transaction.to as `0x${string}`,
+                data: transaction.data,
+                value: transaction.value || 0n,
+              },
+              {
+                onSuccess: (hash) => {
+                  lastHash = hash;
+                  resolve();
+                },
+                onError: (error) => {
+                  reject(error);
+                },
+              }
+            );
+          });
+        }
+
+        if (lastHash) {
+          // Execute the trading system logic
+          const tradingResult = await TradingSystem.executeFixedTrade({
+            userAddress: address,
+            type,
+            txHash: lastHash,
+          });
+
+          if (tradingResult.success) {
+            setTradeState({
+              status: "success",
+              type,
+              hash: lastHash,
+              pointsEarned: tradingResult.pointsEarned,
+              estimatedTokens: tradeResult.estimatedTokenAmount,
+            });
+
+            console.log(
+              `Trade completed! Earned ${tradingResult.pointsEarned} points, got ${tradeResult.estimatedTokenAmount} tokens`
+            );
+          } else {
+            setTradeState({
+              status: "error",
+              type,
+              error: tradingResult.error || "Trade processing failed",
+            });
+          }
+        }
+      } catch (error) {
+        console.error(`${type} trade failed:`, error);
+        setTradeState({
+          status: "error",
+          type,
+          error: error instanceof Error ? error.message : "Transaction failed",
+        });
+      }
+    },
+    [address, isConnected, sendTransaction]
+  );
+
+  const handleBuy = useCallback(() => {
+    handleDynamicTrade("buy");
+  }, [handleDynamicTrade]);
+
+  const handleSell = useCallback(() => {
+    handleDynamicTrade("sell");
+  }, [handleDynamicTrade]);
 
   if (profileLoading || txLoading) {
     return (
@@ -245,7 +397,7 @@ export function RankUpTransactions() {
         <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Coins className="h-4 w-4 text-blue-500" />
-            Trade pTradoor {profile.hasMinted ? "x3" : "..."}
+            Trade pTradoor
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
@@ -255,33 +407,79 @@ export function RankUpTransactions() {
                 <h4 className="text-sm font-medium text-green-500">Buy</h4>
                 <ArrowUpRight className="h-3 w-3 text-green-500" />
               </div>
-              <p className="text-xs text-muted-foreground mb-2">$0.045</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                $1.00 → ~{marketData.estimatedTokens.toFixed(2)} pTRADOOR
+              </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Price: ${marketData.pTradoorPrice.toFixed(4)}
+              </p>
               <Button
                 size="sm"
                 className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
-                onClick={() => handleTrade("buy", 100)}
+                onClick={handleBuy}
+                disabled={isSendTxPending || isConfirming}
               >
-                Buy (+{profile.hasMinted ? "15" : "5"} pts)
+                {isSendTxPending || isConfirming ? (
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                ) : (
+                  `Buy (+${profile?.hasMinted ? "15" : "5"} pts)`
+                )}
               </Button>
+              {tradeState.status === "error" && tradeState.type === "buy" && (
+                <div className="text-xs text-red-500 mt-2">
+                  Error: {tradeState.error}
+                </div>
+              )}
+              {tradeState.status === "success" && tradeState.type === "buy" && (
+                <div className="text-xs text-green-500 mt-2">
+                  Success! +{tradeState.pointsEarned} pts
+                </div>
+              )}
             </div>
             <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20">
               <div className="flex items-center justify-between mb-1">
                 <h4 className="text-sm font-medium text-red-500">Sell</h4>
                 <ArrowUpRight className="h-3 w-3 text-red-500" />
               </div>
-              <p className="text-xs text-muted-foreground mb-2">$0.045</p>
+              <p className="text-xs text-muted-foreground mb-2">
+                ~{marketData.estimatedTokens.toFixed(2)} pTRADOOR → $1.00
+              </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Price: ${marketData.pTradoorPrice.toFixed(4)}
+              </p>
               <Button
                 size="sm"
                 className="w-full bg-red-600 hover:bg-red-700 text-white text-xs"
-                onClick={() => handleTrade("sell", 100)}
+                onClick={handleSell}
+                disabled={isSendTxPending || isConfirming}
               >
-                Sell (+{profile.hasMinted ? "15" : "5"} pts)
+                {isSendTxPending || isConfirming ? (
+                  <Loader2 className="h-3 w-3 mr-2 animate-spin" />
+                ) : (
+                  `Sell (+${profile?.hasMinted ? "15" : "5"} pts)`
+                )}
               </Button>
+              {tradeState.status === "error" && tradeState.type === "sell" && (
+                <div className="text-xs text-red-500 mt-2">
+                  Error: {tradeState.error}
+                </div>
+              )}
+              {tradeState.status === "success" &&
+                tradeState.type === "sell" && (
+                  <div className="text-xs text-green-500 mt-2">
+                    Success! +{tradeState.pointsEarned} pts
+                  </div>
+                )}
             </div>
           </div>
 
           <div className="text-center text-xs text-muted-foreground">
-            Each trade earns {profile.hasMinted ? "15" : "5"} points
+            Each $1 trade earns {profile?.hasMinted ? "15" : "5"} points
+            {profile?.hasMinted && (
+              <span className="text-green-500 ml-1">
+                (3x multiplier active)
+              </span>
+            )}
           </div>
         </CardContent>
       </Card>

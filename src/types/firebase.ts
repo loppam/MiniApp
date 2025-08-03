@@ -5,7 +5,7 @@ export interface UserProfile {
   fid?: number;
   username?: string;
   displayName?: string;
-  avatarUrl?: string;
+  pfpUrl?: string;
   joinDate: Timestamp;
   lastActive: Timestamp;
   tier: "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond";
@@ -18,6 +18,7 @@ export interface UserProfile {
   referrals: number;
   achievements: string[];
   hasMinted?: boolean;
+  lastProcessedBlock?: number;
   createdAt: Timestamp;
   updatedAt: Timestamp;
   initial?: boolean;
@@ -40,6 +41,9 @@ export interface Transaction {
     contractAddress?: string;
     streak?: number;
     bonusType?: string;
+    tradeType?: string;
+    usdAmount?: number;
+    hasMinted?: boolean;
   };
 }
 
