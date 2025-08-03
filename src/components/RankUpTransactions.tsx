@@ -220,9 +220,13 @@ export function RankUpTransactions() {
                     <Progress value={progressToNext} className="h-1.5" />
                   </div>
                   <div className="text-xs text-muted-foreground">
-                    {(
-                      nextTier.minPoints - profile.totalPoints
-                    ).toLocaleString()}{" "}
+                    {(() => {
+                      const pointsNeeded =
+                        nextTier.minPoints - profile.totalPoints;
+                      return pointsNeeded > 0
+                        ? pointsNeeded.toLocaleString()
+                        : "0";
+                    })()}{" "}
                     more
                   </div>
                 </>
@@ -315,7 +319,10 @@ export function RankUpTransactions() {
                     <div>
                       <div className="font-medium">
                         {transaction.type.toUpperCase()}{" "}
-                        {transaction.amount.toLocaleString()} pTRADOOR
+                        {transaction.amount
+                          ? transaction.amount.toLocaleString()
+                          : "0"}{" "}
+                        pTRADOOR
                       </div>
                       <div className="text-sm text-muted-foreground">
                         ${transaction.price || 0} •{" "}

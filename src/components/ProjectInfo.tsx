@@ -98,7 +98,7 @@ export function ProjectInfo({
             <div className="flex justify-between items-center">
               <span className="text-xs text-muted-foreground">Users</span>
               <span className="text-sm font-bold">
-                {stats?.totalUsers.toLocaleString() || "0"}
+                {stats?.totalUsers ? stats.totalUsers.toLocaleString() : "0"}
               </span>
             </div>
             <div className="flex justify-between items-center">
@@ -106,7 +106,9 @@ export function ProjectInfo({
                 Transactions
               </span>
               <span className="text-sm font-bold">
-                {stats?.totalTransactions.toLocaleString() || "0"}
+                {stats?.totalTransactions
+                  ? stats.totalTransactions.toLocaleString()
+                  : "0"}
               </span>
             </div>
             <div className="flex justify-between items-center">

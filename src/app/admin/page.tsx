@@ -730,7 +730,9 @@ export default function AdminPage() {
                           Total Users
                         </p>
                         <p className="text-2xl font-bold">
-                          {platformStats.totalUsers.toLocaleString()}
+                          {platformStats?.totalUsers
+                            ? platformStats.totalUsers.toLocaleString()
+                            : "0"}
                         </p>
                       </div>
                     </div>
@@ -746,7 +748,9 @@ export default function AdminPage() {
                           Total Transactions
                         </p>
                         <p className="text-2xl font-bold">
-                          {platformStats.totalTransactions.toLocaleString()}
+                          {platformStats?.totalTransactions
+                            ? platformStats.totalTransactions.toLocaleString()
+                            : "0"}
                         </p>
                       </div>
                     </div>
@@ -762,7 +766,10 @@ export default function AdminPage() {
                           Total Points
                         </p>
                         <p className="text-2xl font-bold">
-                          {(platformStats.totalPoints / 1000).toFixed(1)}K
+                          {platformStats?.totalPoints
+                            ? (platformStats.totalPoints / 1000).toFixed(1)
+                            : "0.0"}
+                          K
                         </p>
                       </div>
                     </div>
@@ -778,7 +785,10 @@ export default function AdminPage() {
                           pTradoor Supply
                         </p>
                         <p className="text-2xl font-bold">
-                          {(platformStats.ptradoorSupply / 1000).toFixed(1)}K
+                          {platformStats?.ptradoorSupply
+                            ? (platformStats.ptradoorSupply / 1000).toFixed(1)
+                            : "0.0"}
+                          K
                         </p>
                       </div>
                     </div>

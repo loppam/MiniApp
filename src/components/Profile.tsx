@@ -416,10 +416,12 @@ Join me on Base chain's premier trading platform! 🚀
               </div>
               <Progress value={progressToNext} className="h-1.5" />
               <p className="text-xs text-muted-foreground">
-                {(
-                  nextTierPoints[nextTier[0] as keyof typeof nextTierPoints] -
-                  profile.totalPoints
-                ).toLocaleString()}{" "}
+                {(() => {
+                  const pointsNeeded =
+                    nextTierPoints[nextTier[0] as keyof typeof nextTierPoints] -
+                    profile.totalPoints;
+                  return pointsNeeded > 0 ? pointsNeeded.toLocaleString() : "0";
+                })()}{" "}
                 more points needed
               </p>
             </div>

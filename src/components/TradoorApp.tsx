@@ -13,7 +13,6 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
 import { useUserProfile } from "~/hooks/useFirebase";
-import { FarcasterApiService } from "~/lib/farcaster-api";
 
 export default function TradoorApp(
   { title }: { title?: string } = { title: "Tradoor" }
@@ -46,27 +45,17 @@ export default function TradoorApp(
           // Wait a bit for the secure client to be available
           setTimeout(async () => {
             try {
-              // Fetch avatar URL from Farcaster API if username is available
-              let avatarUrl: string | undefined;
-              if (sdkContext.user?.username) {
-                try {
-                  const fetchedAvatarUrl =
-                    await FarcasterApiService.getAvatarUrlByUsername(
-                      sdkContext.user.username
-                    );
-                  avatarUrl = fetchedAvatarUrl || undefined;
-                  console.log("Fetched avatar URL:", avatarUrl);
-                } catch (avatarError) {
-                  console.warn("Failed to fetch avatar URL:", avatarError);
-                }
-              }
-
-              await initializeUser({
+              // Use SDK user data directly instead of making API calls
+              const userData = {
                 address,
                 username: sdkContext.user?.username,
                 displayName: sdkContext.user?.displayName,
-                avatarUrl,
-              });
+                // Note: SDK doesn't provide avatar URL directly, so we'll skip it for now
+                // The user's profile picture will be handled by the Farcaster client
+              };
+
+              console.log("Initializing user with SDK data:", userData);
+              await initializeUser(userData);
               console.log("User initialization completed successfully");
             } catch (initError) {
               console.error("User initialization failed:", initError);

@@ -27,7 +27,6 @@ import {
   Milestone,
 } from "~/types/firebase";
 import { BaseChainService, PointCalculation } from "./base-chain";
-import { FarcasterApiService } from "./farcaster-api";
 
 // Utility function to remove undefined values from objects
 function removeUndefinedValues<T extends Record<string, unknown>>(obj: T): T {
@@ -359,30 +358,6 @@ export const userService = {
     } catch (error) {
       console.error("Error getting user achievements:", error);
       return [];
-    }
-  },
-
-  // Update user avatar from Farcaster API
-  async updateUserAvatar(address: string): Promise<void> {
-    try {
-      const userProfile = await this.getUserProfile(address);
-      if (!userProfile?.username) {
-        console.log("No username found for user:", address);
-        return;
-      }
-
-      const avatarUrl = await FarcasterApiService.getAvatarUrlByUsername(
-        userProfile.username
-      );
-      if (avatarUrl) {
-        await updateDoc(doc(db, "users", address), {
-          avatarUrl,
-          updatedAt: serverTimestamp(),
-        });
-        console.log("Updated avatar URL for user:", address);
-      }
-    } catch (error) {
-      console.error("Error updating user avatar:", error);
     }
   },
 };
