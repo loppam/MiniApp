@@ -49,38 +49,18 @@ export class PriceService {
       // Check if we're in a Farcaster environment
       const context = await sdk.context;
 
-      if (context) {
-        // Let Warpcast handle pricing through the wallet
-        // For now, return a reasonable estimate
-        return 0.045;
+      if (!context) {
+        throw new Error(
+          "Farcaster context not available - cannot get pTradoor price"
+        );
       }
 
-      // Fallback to simulated price
-      return await this.getSimulatedPTradoorPrice();
+      // Let Warpcast handle pricing through the wallet
+      // For now, return a reasonable estimate
+      return 0.045;
     } catch (error) {
       console.error("Error getting pTradoor price:", error);
-      return 0.045; // Fallback price
-    }
-  }
-
-  /**
-   * Get simulated pTradoor price (fallback)
-   */
-  private static async getSimulatedPTradoorPrice(): Promise<number> {
-    try {
-      // In a real implementation, this would fetch from a DEX or price oracle
-      // For now, we'll simulate with market dynamics based on ETH price
-      const ethPrice = await this.getETHPrice();
-
-      // Simulate pTradoor price with some correlation to ETH
-      const basePrice = 0.045;
-      const ethCorrelation = ((ethPrice - 3000) / 3000) * 0.01; // Small correlation
-      const volatility = (Math.random() - 0.5) * 0.005; // ±0.25% volatility
-
-      return Math.max(0.01, basePrice + ethCorrelation + volatility);
-    } catch (error) {
-      console.error("Error calculating simulated pTradoor price:", error);
-      return 0.045; // Fallback price
+      throw new Error("Failed to get pTradoor price from Warpcast wallet");
     }
   }
 
@@ -113,17 +93,12 @@ export class PriceService {
     } catch (error) {
       console.error("Error fetching price data:", error);
 
-      // Return cached data if available, otherwise fallback
+      // Return cached data if available, otherwise throw error
       if (cached) {
         return cached.data;
       }
 
-      return {
-        ethPrice: 3000,
-        pTradoorPrice: 0.045,
-        lastUpdated: Date.now(),
-        source: "fallback",
-      };
+      throw new Error("Failed to fetch price data from Warpcast wallet");
     }
   }
 

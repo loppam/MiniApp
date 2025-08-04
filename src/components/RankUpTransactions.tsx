@@ -21,6 +21,7 @@ import { Timestamp } from "firebase/firestore";
 import { useState, useCallback, useEffect } from "react";
 import { TradingSystem } from "~/lib/trading-system";
 import { DynamicTradingService } from "~/lib/dynamic-trading";
+import { PriceService } from "~/lib/price-service";
 
 const rankTiers = [
   {
@@ -104,9 +105,11 @@ export function RankUpTransactions() {
   useEffect(() => {
     const fetchMarketData = async () => {
       try {
-        const data = await DynamicTradingService.getMarketData();
-        const estimatedTokens =
-          await DynamicTradingService.calculateTokenAmount(1);
+        const data = await PriceService.getPriceData();
+        const estimatedTokens = await PriceService.calculateTokenAmount(
+          1,
+          "PTRADOOR"
+        );
         setMarketData({
           pTradoorPrice: data.pTradoorPrice,
           ethPrice: data.ethPrice,
@@ -422,7 +425,7 @@ export function RankUpTransactions() {
                 {isSendTxPending || isConfirming ? (
                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                 ) : (
-                  `Buy (+${profile?.hasMinted ? "15" : "5"} pts)`
+                  "Buy"
                 )}
               </Button>
               {tradeState.status === "error" && tradeState.type === "buy" && (
@@ -456,7 +459,7 @@ export function RankUpTransactions() {
                 {isSendTxPending || isConfirming ? (
                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                 ) : (
-                  `Sell (+${profile?.hasMinted ? "15" : "5"} pts)`
+                  "Sell"
                 )}
               </Button>
               {tradeState.status === "error" && tradeState.type === "sell" && (
