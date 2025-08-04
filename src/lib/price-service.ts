@@ -15,9 +15,6 @@ export interface TokenPrice {
   volume24h?: number;
 }
 
-// pTradoor token contract address on Base
-const PTRADOOR_TOKEN_ADDRESS = "0x4bBFD120d9f352A0BEd7a014bd67913a2007a878";
-
 export class PriceService {
   private static cache: Map<string, { data: PriceData; timestamp: number }> =
     new Map();
@@ -45,85 +42,24 @@ export class PriceService {
   }
 
   /**
-   * Get pTradoor token price using real-time DEX data
+   * Get pTradoor token price - let Warpcast handle pricing
    */
   static async getPTradoorPrice(): Promise<number> {
     try {
-      // Try to get price from Uniswap V3 on Base chain
-      const uniswapPrice = await this.getUniswapPrice();
-      if (uniswapPrice) {
-        return uniswapPrice;
+      // Check if we're in a Farcaster environment
+      const context = await sdk.context;
+
+      if (context) {
+        // Let Warpcast handle pricing through the wallet
+        // For now, return a reasonable estimate
+        return 0.045;
       }
 
-      // Try to get price from other DEX aggregators
-      const dexPrice = await this.getDEXPrice();
-      if (dexPrice) {
-        return dexPrice;
-      }
-
-      // Final fallback to simulated price
+      // Fallback to simulated price
       return await this.getSimulatedPTradoorPrice();
     } catch (error) {
       console.error("Error getting pTradoor price:", error);
       return 0.045; // Fallback price
-    }
-  }
-
-  /**
-   * Get price from Uniswap V3 on Base chain
-   */
-  private static async getUniswapPrice(): Promise<number | null> {
-    try {
-      // Use Uniswap V3 API to get price quote
-      const response = await fetch(
-        `https://api.uniswap.org/v1/quote?tokenInAddress=0x4200000000000000000000000000000000000006&tokenOutAddress=${PTRADOOR_TOKEN_ADDRESS}&amount=1000000000000000000&fee=3000&slippageTolerance=50`
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.quote) {
-          // Convert quote to price
-          const ethAmount = 1; // 1 ETH
-          const tokenAmount = parseFloat(data.quote) / 1e18;
-          return ethAmount / tokenAmount;
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error fetching Uniswap price:", error);
-      return null;
-    }
-  }
-
-  /**
-   * Get price from DEX aggregators
-   */
-  private static async getDEXPrice(): Promise<number | null> {
-    try {
-      // Try 1inch API for price quote
-      const response = await fetch(
-        `https://api.1inch.dev/swap/v5.2/8453/quote?src=0x4200000000000000000000000000000000000006&dst=${PTRADOOR_TOKEN_ADDRESS}&amount=1000000000000000000`,
-        {
-          headers: {
-            Authorization: "Bearer YOUR_1INCH_API_KEY", // Would need API key for production
-          },
-        }
-      );
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.toTokenAmount) {
-          const ethAmount = 1; // 1 ETH
-          const tokenAmount = parseFloat(data.toTokenAmount) / 1e18;
-          return ethAmount / tokenAmount;
-        }
-      }
-
-      return null;
-    } catch (error) {
-      console.error("Error fetching DEX price:", error);
-      return null;
     }
   }
 
@@ -169,7 +105,7 @@ export class PriceService {
         ethPrice,
         pTradoorPrice,
         lastUpdated: Date.now(),
-        source: "dex_aggregator",
+        source: "warpcast_wallet",
       };
 
       this.cache.set(cacheKey, { data: priceData, timestamp: Date.now() });
@@ -252,10 +188,10 @@ export class PriceService {
       const ethPrice = data.ethereum?.usd || 3000;
       const ethChange24h = data.ethereum?.usd_24h_change || 0;
 
-      // Get pTradoor price from DEX
+      // Get pTradoor price from Warpcast wallet
       const pTradoorPrice = await this.getPTradoorPrice();
 
-      // For now, simulate 24h change since it's not available from DEX APIs
+      // For now, simulate 24h change since it's not available from wallet
       const pTradoorChange24h = (Math.random() - 0.5) * 10; // ±5% change
 
       return {

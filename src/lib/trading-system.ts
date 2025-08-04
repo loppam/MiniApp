@@ -5,7 +5,7 @@ import {
 } from "./firebase-services";
 
 // pTradoor token contract address on Base
-const PTRADOOR_CONTRACT_ADDRESS = "0x4bBFD120d9f352A0BEd7a014bd67913a2007a878";
+const PTRADOOR_CONTRACT_ADDRESS = "0x41Ed0311640A5e489A90940b1c33433501a21B07";
 
 // Fixed trading constants
 const FIXED_TRADE_AMOUNT_USD = 1; // $1 fixed amount

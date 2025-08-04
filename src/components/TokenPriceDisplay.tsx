@@ -4,17 +4,14 @@ import React, { useEffect, useState } from "react";
 import { PriceService } from "~/lib/price-service";
 import { sdk } from "@farcaster/miniapp-sdk";
 
-// pTradoor token contract address on Base
-const PTRADOOR_TOKEN_ADDRESS = "0x4bBFD120d9f352A0BEd7a014bd67913a2007a878";
-
 interface TokenPriceDisplayProps {
   showDetails?: boolean;
   refreshInterval?: number; // in milliseconds
 }
 
-export function TokenPriceDisplay({ 
-  showDetails = true, 
-  refreshInterval = 30000 
+export function TokenPriceDisplay({
+  showDetails = true,
+  refreshInterval = 30000,
 }: TokenPriceDisplayProps) {
   const [priceData, setPriceData] = useState<{
     ethPrice: number;
@@ -118,7 +115,9 @@ export function TokenPriceDisplay({
             }`}
           />
           <span className="text-xs text-gray-500">
-            {farcasterConnected ? "Farcaster Connected" : "Farcaster Disconnected"}
+            {farcasterConnected
+              ? "Farcaster Connected"
+              : "Farcaster Disconnected"}
           </span>
         </div>
       </div>
@@ -137,9 +136,7 @@ export function TokenPriceDisplay({
               {formatPrice(priceData.ethPrice)}
             </div>
             {showDetails && (
-              <div className="text-xs text-gray-500">
-                Source: CoinGecko
-              </div>
+              <div className="text-xs text-gray-500">Source: CoinGecko</div>
             )}
           </div>
         </div>
@@ -158,7 +155,10 @@ export function TokenPriceDisplay({
             </div>
             {showDetails && (
               <div className="text-xs text-gray-500">
-                Source: {priceData.source === "farcaster_wallet" ? "Farcaster Wallet" : priceData.source}
+                Source:{" "}
+                {priceData.source === "farcaster_wallet"
+                  ? "Farcaster Wallet"
+                  : priceData.source}
               </div>
             )}
           </div>
@@ -172,7 +172,9 @@ export function TokenPriceDisplay({
             </div>
             <div className="flex justify-between items-center text-xs text-gray-500">
               <span>Data source:</span>
-              <span className="capitalize">{priceData.source.replace("_", " ")}</span>
+              <span className="capitalize">
+                {priceData.source.replace("_", " ")}
+              </span>
             </div>
           </div>
         )}
@@ -186,14 +188,14 @@ export function TokenPriceDisplay({
         >
           {loading ? "Refreshing..." : "Refresh Prices"}
         </button>
-        
+
         {farcasterConnected && (
           <button
             onClick={async () => {
               try {
                 await PriceService.openSwapForm(
                   "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // ETH
-                  `eip155:8453/erc20:${PTRADOOR_TOKEN_ADDRESS}`, // pTradoor
+                  "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
                   "1000000000000000000" // 1 ETH
                 );
               } catch (error) {
@@ -210,4 +212,4 @@ export function TokenPriceDisplay({
   );
 }
 
-export default TokenPriceDisplay; 
+export default TokenPriceDisplay;

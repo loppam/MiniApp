@@ -5,7 +5,7 @@ import { userService, transactionService } from "./firebase-services";
 import { PriceService } from "./price-service";
 
 // pTradoor token contract address on Base
-const PTRADOOR_TOKEN_ADDRESS = "0x4bBFD120d9f352A0BEd7a014bd67913a2007a878";
+const PTRADOOR_TOKEN_ADDRESS = "0x41Ed0311640A5e489A90940b1c33433501a21B07";
 
 // Create public client for Base chain
 const publicClient = createPublicClient({

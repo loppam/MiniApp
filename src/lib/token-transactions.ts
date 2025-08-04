@@ -60,7 +60,7 @@ export const ERC20_ABI = [
 // Token configuration for Base chain
 export const TOKEN_CONFIG = {
   PTRADOOR: {
-    address: "0x4bBFD120d9f352A0BEd7a014bd67913a2007a878" as Address,
+    address: "0x41Ed0311640A5e489A90940b1c33433501a21B07" as Address,
     symbol: "pTRADOOR",
     decimals: 18,
     name: "pTradoor Token",
