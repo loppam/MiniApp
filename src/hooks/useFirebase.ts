@@ -60,27 +60,11 @@ export function useUserProfile(address: string | undefined) {
     }
   };
 
-  const initializeUser = async (userData: {
-    address: string;
-    username?: string;
-    displayName?: string;
-    pfpUrl?: string;
-  }) => {
-    try {
-      await userService.upsertUserProfile(userData.address, userData);
-      console.log("User initialized successfully");
-    } catch (error) {
-      console.error("Error initializing user:", error);
-      throw error;
-    }
-  };
-
   return {
     profile,
     loading,
     error,
     updateProfile,
-    initializeUser,
   };
 }
 

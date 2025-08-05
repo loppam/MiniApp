@@ -27,7 +27,7 @@ export default function TradoorApp(
   const { disconnect } = useDisconnect();
 
   // Firebase hooks
-  const { profile: userProfile, initializeUser } = useUserProfile(address);
+  const { profile: userProfile } = useUserProfile(address);
 
   const handleAddFrame = useCallback(async () => {
     try {
@@ -90,9 +90,38 @@ export default function TradoorApp(
 
               console.log("Initializing user with SDK data:", userData);
 
-              // Use the proper initializeUser function from the hook
-              await initializeUser(userData);
-              console.log("User initialization completed successfully");
+              // Use the API route for user initialization
+              const response = await fetch("/api/firestore-proxy", {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  address,
+                  action: "initializeUser",
+                  data: {
+                    profileData: userData,
+                    context: {
+                      user: {
+                        fid: sdkContext.user?.fid,
+                        username: sdkContext.user?.username,
+                        displayName: sdkContext.user?.displayName,
+                        pfpUrl: sdkContext.user?.pfpUrl,
+                      },
+                    },
+                  },
+                }),
+              });
+
+              const result = await response.json();
+              if (result.success) {
+                console.log(
+                  "User initialization completed successfully:",
+                  result.data
+                );
+              } else {
+                console.error("User initialization failed:", result.error);
+              }
             } catch (initError) {
               console.error("User initialization failed:", initError);
               // Continue with app loading even if initialization fails

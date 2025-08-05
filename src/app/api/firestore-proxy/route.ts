@@ -141,26 +141,6 @@ async function handleFirestoreAction(
         console.log("Leaderboard entry updated successfully");
         return { success: true };
 
-      case "executeTrade":
-        console.log("Executing trade for:", address);
-        await transactionService.addTransaction({
-          userAddress: address,
-          type: data.type as
-            | "buy"
-            | "sell"
-            | "base_transaction"
-            | "streak_bonus",
-          amount: data.amount as number,
-          price: data.price as number,
-          points: 5, // Each trade earns 5 points
-          status: "completed",
-          metadata: {
-            chainId: 8453, // Base chain
-          },
-        });
-        console.log("Trade executed successfully");
-        return { success: true };
-
       case "testConnection":
         console.log("Testing Firebase connection...");
         const isConnected = await userService.testConnection();
