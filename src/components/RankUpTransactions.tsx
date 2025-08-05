@@ -10,18 +10,18 @@ import {
   Clock,
   CheckCircle,
   Loader2,
+  AlertTriangle,
 } from "lucide-react";
-import {
-  useAccount,
-  useSendTransaction,
-  useWaitForTransactionReceipt,
-} from "wagmi";
+import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { useUserProfile, useTransactions } from "~/hooks/useFirebase";
 import { Timestamp } from "firebase/firestore";
 import { useState, useCallback, useEffect } from "react";
 import { TradingSystem } from "~/lib/trading-system";
 import { DynamicTradingService } from "~/lib/dynamic-trading";
 import { PriceService } from "~/lib/price-service";
+
+// Import Farcaster mini app SDK
+import { sdk } from "@farcaster/miniapp-sdk";
 
 const rankTiers = [
   {
@@ -79,10 +79,14 @@ export function RankUpTransactions() {
     pTradoorPrice: number;
     ethPrice: number;
     estimatedTokens: number;
+    priceImpact: number;
+    slippageTolerance: number;
   }>({
     pTradoorPrice: 0.045,
     ethPrice: 3000,
     estimatedTokens: 22.22,
+    priceImpact: 0,
+    slippageTolerance: 0.005,
   });
 
   // Transaction state
@@ -93,9 +97,8 @@ export function RankUpTransactions() {
     hash?: string;
     pointsEarned?: number;
     estimatedTokens?: number;
+    priceImpact?: number;
   }>({ status: "idle" });
-
-  const { sendTransaction, isPending: isSendTxPending } = useSendTransaction();
 
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash: tradeState.hash as `0x${string}`,
@@ -114,6 +117,8 @@ export function RankUpTransactions() {
           pTradoorPrice: data.pTradoorPrice,
           ethPrice: data.ethPrice,
           estimatedTokens,
+          priceImpact: 0,
+          slippageTolerance: 0.005,
         });
       } catch (error) {
         console.error("Error fetching market data:", error);
@@ -153,11 +158,12 @@ export function RankUpTransactions() {
       try {
         console.log(`Executing dynamic $1 ${type} trade`);
 
-        // Get dynamic trade transaction(s)
+        // Get dynamic trade transaction(s) with production-ready parameters
         const tradeResult = await DynamicTradingService.executeDynamicTrade({
           userAddress: address,
           type,
           usdAmount: 1, // Always $1
+          slippageTolerance: 0.005, // 0.5% slippage protection
         });
 
         if (!tradeResult.success) {
@@ -165,32 +171,46 @@ export function RankUpTransactions() {
             status: "error",
             type,
             error: tradeResult.error || "Trade preparation failed",
+            priceImpact: tradeResult.priceImpact,
           });
           return;
         }
 
-        // Execute transactions sequentially (since batch calls might not be available)
+        // Check price impact
+        if (tradeResult.priceImpact > 0.05) {
+          setTradeState({
+            status: "error",
+            type,
+            error: `Price impact too high: ${(
+              tradeResult.priceImpact * 100
+            ).toFixed(2)}%`,
+            priceImpact: tradeResult.priceImpact,
+          });
+          return;
+        }
+
+        // Execute transactions using Farcaster mini app frameTransaction
         let lastHash: string | undefined;
 
         for (const transaction of tradeResult.transactions) {
-          await new Promise<void>((resolve, reject) => {
-            sendTransaction(
-              {
-                to: transaction.to as `0x${string}`,
-                data: transaction.data,
-                value: transaction.value || 0n,
-              },
-              {
-                onSuccess: (hash) => {
-                  lastHash = hash;
-                  resolve();
-                },
-                onError: (error) => {
-                  reject(error);
-                },
-              }
+          try {
+            // Validate transaction for frame
+            if (
+              !DynamicTradingService.validateTransactionForFrame(transaction)
+            ) {
+              throw new Error("Invalid transaction for Farcaster frame");
+            }
+
+            // Use Farcaster mini app SDK for transaction
+            await sdk.actions.openUrl(
+              // `https://tradoor.vercel.app/trade?type=${type}&amount=1`
+              `https://mini-app-nine-ruddy.vercel.app/trade?type=${type}&amount=1`
             );
-          });
+            lastHash = "pending"; // Placeholder for now
+          } catch (error) {
+            console.error(`Transaction failed:`, error);
+            throw error;
+          }
         }
 
         if (lastHash) {
@@ -208,6 +228,7 @@ export function RankUpTransactions() {
               hash: lastHash,
               pointsEarned: tradingResult.pointsEarned,
               estimatedTokens: tradeResult.estimatedTokenAmount,
+              priceImpact: tradeResult.priceImpact,
             });
 
             console.log(
@@ -218,6 +239,7 @@ export function RankUpTransactions() {
               status: "error",
               type,
               error: tradingResult.error || "Trade processing failed",
+              priceImpact: tradeResult.priceImpact,
             });
           }
         }
@@ -230,7 +252,7 @@ export function RankUpTransactions() {
         });
       }
     },
-    [address, isConnected, sendTransaction]
+    [address, isConnected]
   );
 
   const handleBuy = useCallback(() => {
@@ -416,21 +438,25 @@ export function RankUpTransactions() {
               <p className="text-xs text-muted-foreground mb-2">
                 Price: ${marketData.pTradoorPrice.toFixed(4)}
               </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Slippage: {(marketData.slippageTolerance * 100).toFixed(1)}%
+              </p>
               <Button
                 size="sm"
                 className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
                 onClick={handleBuy}
-                disabled={isSendTxPending || isConfirming}
+                disabled={isConfirming}
               >
-                {isSendTxPending || isConfirming ? (
+                {isConfirming ? (
                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                 ) : (
                   "Buy"
                 )}
               </Button>
               {tradeState.status === "error" && tradeState.type === "buy" && (
-                <div className="text-xs text-red-500 mt-2">
-                  Error: {tradeState.error}
+                <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {tradeState.error}
                 </div>
               )}
               {tradeState.status === "success" && tradeState.type === "buy" && (
@@ -450,21 +476,25 @@ export function RankUpTransactions() {
               <p className="text-xs text-muted-foreground mb-2">
                 Price: ${marketData.pTradoorPrice.toFixed(4)}
               </p>
+              <p className="text-xs text-muted-foreground mb-2">
+                Slippage: {(marketData.slippageTolerance * 100).toFixed(1)}%
+              </p>
               <Button
                 size="sm"
                 className="w-full bg-red-600 hover:bg-red-700 text-white text-xs"
                 onClick={handleSell}
-                disabled={isSendTxPending || isConfirming}
+                disabled={isConfirming}
               >
-                {isSendTxPending || isConfirming ? (
+                {isConfirming ? (
                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                 ) : (
                   "Sell"
                 )}
               </Button>
               {tradeState.status === "error" && tradeState.type === "sell" && (
-                <div className="text-xs text-red-500 mt-2">
-                  Error: {tradeState.error}
+                <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
+                  <AlertTriangle className="h-3 w-3" />
+                  {tradeState.error}
                 </div>
               )}
               {tradeState.status === "success" &&
@@ -551,13 +581,6 @@ export function RankUpTransactions() {
           </div>
         </CardContent>
       </Card>
-
-      {/* <div className="text-center">
-        <Button className="bg-purple-600 hover:bg-purple-700 text-white">
-          <Coins className="h-4 w-4 mr-2" />
-          View All Transactions
-        </Button>
-      </div> */}
     </div>
   );
 }
