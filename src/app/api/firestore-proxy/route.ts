@@ -103,13 +103,23 @@ async function handleFirestoreAction(
           context: data.context,
         });
         try {
+          // First, create/update the user profile
           await userService.upsertUserProfile(
             address,
             data.profileData as Record<string, unknown>,
             data.context as Record<string, unknown>
           );
+          console.log("User profile created/updated successfully");
+
+          // Then allocate initial points
+          console.log("Allocating initial points for new user...");
+          const initialPoints = await userService.allocateInitialPoints(
+            address
+          );
+          console.log("Initial points allocated:", initialPoints);
+
           console.log("User initialization completed successfully");
-          return { success: true };
+          return { success: true, data: { initialPoints } };
         } catch (initError) {
           console.error("User initialization failed:", initError);
           return {

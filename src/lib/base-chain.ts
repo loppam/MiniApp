@@ -123,8 +123,16 @@ export class BaseChainService {
   // Get initial points for a user (called only once)
   static async getInitialPoints(address: string): Promise<PointCalculation> {
     try {
+      console.log(`🔍 Checking initial points for address: ${address}`);
       const transactions = await this.getWalletTransactions(address);
-      return this.calculateInitialPoints(transactions);
+      console.log(
+        `📊 Found ${transactions.length} transactions for ${address}`
+      );
+
+      const result = this.calculateInitialPoints(transactions);
+      console.log(`💰 Initial points calculation for ${address}:`, result);
+
+      return result;
     } catch (error) {
       console.error("Error calculating initial points:", error);
       return {

@@ -190,13 +190,20 @@ export const userService = {
   // Allocate initial points based on Base chain activity
   async allocateInitialPoints(address: string): Promise<PointCalculation> {
     try {
+      console.log(`🎯 Starting initial points allocation for: ${address}`);
+
       // Check if user has already received initial points
       const userRef = doc(db, "users", address);
       const userDoc = await getDoc(userRef);
 
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserProfile;
+        console.log(`👤 User exists, initial flag: ${userData.initial}`);
+
         if (userData.initial === true) {
+          console.log(
+            `✅ User ${address} already has initial points, returning current state`
+          );
           // User already has initial points, return current state
           return {
             totalTransactions: userData.totalTransactions,
@@ -210,13 +217,21 @@ export const userService = {
             },
           };
         }
+      } else {
+        console.log(
+          `🆕 User ${address} does not exist yet, will allocate initial points`
+        );
       }
 
       // Get initial points from Base chain activity
+      console.log(`🔍 Fetching Base chain data for ${address}...`);
       const initialPoints = await BaseChainService.getInitialPoints(address);
 
       // Log the initial points allocation
-      console.log(`Initial points allocated for ${address}:`, initialPoints);
+      console.log(
+        `💰 Final initial points allocated for ${address}:`,
+        initialPoints
+      );
 
       // (No need to set initial: true here; handled in upsertUserProfile)
 
