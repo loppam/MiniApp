@@ -45,6 +45,7 @@ interface UserContext {
   username?: string;
   displayName?: string;
   pfpUrl?: string;
+  avatarUrl?: string; // Add support for avatarUrl as well
 }
 
 interface ContextData {
@@ -107,12 +108,16 @@ export const userService = {
         const initialPoints = await this.allocateInitialPoints(address);
         console.log("Initial points allocated:", initialPoints);
 
+        // Determine the profile picture URL (prefer avatarUrl over pfpUrl)
+        const profilePictureUrl =
+          context?.user?.avatarUrl || context?.user?.pfpUrl;
+
         const newProfile = removeUndefinedValues({
           address,
           fid: context?.user?.fid,
           username: context?.user?.username,
           displayName: context?.user?.displayName,
-          pfpUrl: context?.user?.pfpUrl,
+          pfpUrl: profilePictureUrl, // Use the determined profile picture URL
           joinDate: serverTimestamp(),
           lastActive: serverTimestamp(),
           tier: calculateTier(initialPoints.points),
@@ -814,7 +819,7 @@ export const createRealtimeListeners = {
   ) => {
     const transactionsQuery = query(
       collection(db, "transactions"),
-      where("address", "==", address),
+      where("userAddress", "==", address), // Fixed: use userAddress instead of address
       orderBy("timestamp", "desc"),
       limit(10)
     );

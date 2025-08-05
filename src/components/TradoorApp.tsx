@@ -13,6 +13,7 @@ import { useAccount, useConnect, useDisconnect } from "wagmi";
 import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
 import { useUserProfile } from "~/hooks/useFirebase";
+import { userService } from "~/lib/firebase-services";
 
 export default function TradoorApp(
   { title }: { title?: string } = { title: "Tradoor" }
@@ -85,12 +86,28 @@ export default function TradoorApp(
                 address,
                 username: sdkContext.user?.username,
                 displayName: sdkContext.user?.displayName,
-                // Note: SDK doesn't provide avatar URL directly, so we'll skip it for now
-                // The user's profile picture will be handled by the Farcaster client
+                pfpUrl: sdkContext.user?.avatarUrl || sdkContext.user?.pfpUrl, // Handle both avatarUrl and pfpUrl
               };
 
               console.log("Initializing user with SDK data:", userData);
-              await initializeUser(userData);
+
+              // Create context data for proper user initialization
+              const contextData = {
+                user: {
+                  fid: sdkContext.user?.fid,
+                  username: sdkContext.user?.username,
+                  displayName: sdkContext.user?.displayName,
+                  pfpUrl: sdkContext.user?.pfpUrl,
+                  avatarUrl: sdkContext.user?.avatarUrl,
+                },
+              };
+
+              // Use the upsertUserProfile with context to ensure proper initialization
+              await userService.upsertUserProfile(
+                address,
+                userData,
+                contextData
+              );
               console.log("User initialization completed successfully");
             } catch (initError) {
               console.error("User initialization failed:", initError);
@@ -112,7 +129,7 @@ export default function TradoorApp(
     if (sdk && !isSDKLoaded) {
       load();
     }
-  }, [isSDKLoaded, address, isConnected, initializeUser]);
+  }, [isSDKLoaded, address, isConnected]);
 
   // Debug logging for profile
   useEffect(() => {

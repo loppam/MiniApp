@@ -17,7 +17,6 @@ import { useUserProfile, useTransactions } from "~/hooks/useFirebase";
 import { Timestamp } from "firebase/firestore";
 import { useState, useCallback } from "react";
 import { TradingSystem } from "~/lib/trading-system";
-import { DynamicTradingService } from "~/lib/dynamic-trading";
 
 // Import Farcaster mini app SDK
 import { sdk } from "@farcaster/miniapp-sdk";
@@ -113,85 +112,55 @@ export function RankUpTransactions() {
       try {
         console.log(`Executing dynamic $1 ${type} trade`);
 
-        // Get dynamic trade transaction(s) with production-ready parameters
-        const tradeResult = await DynamicTradingService.executeDynamicTrade({
+        // Use Farcaster's native swap functionality
+        let swapResult;
+
+        if (type === "buy") {
+          // Buy: ETH → pTradoor
+          swapResult = await sdk.actions.swapToken({
+            sellToken:
+              "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // WETH
+            buyToken:
+              "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
+            sellAmount: "1000000000000000000", // 1 ETH (18 decimals)
+          });
+        } else {
+          // Sell: pTradoor → ETH
+          swapResult = await sdk.actions.swapToken({
+            sellToken:
+              "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
+            buyToken:
+              "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // WETH
+            sellAmount: "1000000000000000000", // 1 pTradoor (18 decimals)
+          });
+        }
+
+        console.log("Farcaster swap result:", swapResult);
+
+        // Execute the trading system logic
+        const tradingResult = await TradingSystem.executeFixedTrade({
           userAddress: address,
           type,
-          usdAmount: 1, // Always $1
-          slippageTolerance: 0.005, // 0.5% slippage protection
+          txHash: "farcaster_swap", // Use a placeholder since Farcaster handles the actual transaction
         });
 
-        if (!tradeResult.success) {
+        if (tradingResult.success) {
+          setTradeState({
+            status: "success",
+            type,
+            hash: "farcaster_swap",
+            pointsEarned: tradingResult.pointsEarned,
+          });
+
+          console.log(
+            `Trade completed! Earned ${tradingResult.pointsEarned} points`
+          );
+        } else {
           setTradeState({
             status: "error",
             type,
-            error: tradeResult.error || "Trade preparation failed",
+            error: tradingResult.error || "Trade processing failed",
           });
-          return;
-        }
-
-        // Check price impact
-        if (tradeResult.priceImpact > 0.05) {
-          setTradeState({
-            status: "error",
-            type,
-            error: `Price impact too high: ${(
-              tradeResult.priceImpact * 100
-            ).toFixed(2)}%`,
-          });
-          return;
-        }
-
-        // Execute transactions using Farcaster mini app SDK
-        let lastHash: string | undefined;
-
-        for (const transaction of tradeResult.transactions) {
-          try {
-            // Validate transaction for frame
-            if (
-              !DynamicTradingService.validateTransactionForFrame(transaction)
-            ) {
-              throw new Error("Invalid transaction for Farcaster frame");
-            }
-
-            // Use Farcaster mini app SDK for transaction
-            await sdk.actions.openUrl(
-              // `https://tradoor.vercel.app/trade?type=${type}&amount=1`
-              `https://mini-app-nine-ruddy.vercel.app/trade?type=${type}&amount=1`
-            );
-            lastHash = "pending"; // Placeholder for now
-          } catch (error) {
-            console.error(`Transaction failed:`, error);
-            throw error;
-          }
-        }
-
-        if (lastHash) {
-          // Execute the trading system logic
-          const tradingResult = await TradingSystem.executeFixedTrade({
-            userAddress: address,
-            type,
-            txHash: lastHash,
-          });
-
-          if (tradingResult.success) {
-            setTradeState({
-              status: "success",
-              type,
-              hash: lastHash,
-              pointsEarned: tradingResult.pointsEarned,
-            });
-
-            console.log(
-              `Trade completed! Earned ${tradingResult.pointsEarned} points`
-            );
-          } else {
-            setTradeState({
-              status: "error",
-              type,
-              error: tradingResult.error || "Trade processing failed",
-            });
-          }
         }
       } catch (error) {
         console.error(`${type} trade failed:`, error);
