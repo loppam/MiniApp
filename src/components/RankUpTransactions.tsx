@@ -15,10 +15,9 @@ import {
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { useUserProfile, useTransactions } from "~/hooks/useFirebase";
 import { Timestamp } from "firebase/firestore";
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback } from "react";
 import { TradingSystem } from "~/lib/trading-system";
 import { DynamicTradingService } from "~/lib/dynamic-trading";
-import { PriceService } from "~/lib/price-service";
 
 // Import Farcaster mini app SDK
 import { sdk } from "@farcaster/miniapp-sdk";
@@ -74,21 +73,6 @@ export function RankUpTransactions() {
     error: txError,
   } = useTransactions(address);
 
-  // Market data state
-  const [marketData, setMarketData] = useState<{
-    pTradoorPrice: number;
-    ethPrice: number;
-    estimatedTokens: number;
-    priceImpact: number;
-    slippageTolerance: number;
-  }>({
-    pTradoorPrice: 0.045,
-    ethPrice: 3000,
-    estimatedTokens: 22.22,
-    priceImpact: 0,
-    slippageTolerance: 0.005,
-  });
-
   // Transaction state
   const [tradeState, setTradeState] = useState<{
     status: "idle" | "pending" | "success" | "error";
@@ -96,40 +80,11 @@ export function RankUpTransactions() {
     error?: string;
     hash?: string;
     pointsEarned?: number;
-    estimatedTokens?: number;
-    priceImpact?: number;
   }>({ status: "idle" });
 
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash: tradeState.hash as `0x${string}`,
   });
-
-  // Fetch market data on component mount
-  useEffect(() => {
-    const fetchMarketData = async () => {
-      try {
-        const data = await PriceService.getPriceData();
-        const estimatedTokens = await PriceService.calculateTokenAmount(
-          1,
-          "PTRADOOR"
-        );
-        setMarketData({
-          pTradoorPrice: data.pTradoorPrice,
-          ethPrice: data.ethPrice,
-          estimatedTokens,
-          priceImpact: 0,
-          slippageTolerance: 0.005,
-        });
-      } catch (error) {
-        console.error("Error fetching market data:", error);
-      }
-    };
-
-    fetchMarketData();
-    // Refresh market data every 30 seconds
-    const interval = setInterval(fetchMarketData, 30000);
-    return () => clearInterval(interval);
-  }, []);
 
   const formatTime = (
     timestamp: Timestamp | Date | string | null | undefined
@@ -171,7 +126,6 @@ export function RankUpTransactions() {
             status: "error",
             type,
             error: tradeResult.error || "Trade preparation failed",
-            priceImpact: tradeResult.priceImpact,
           });
           return;
         }
@@ -184,12 +138,11 @@ export function RankUpTransactions() {
             error: `Price impact too high: ${(
               tradeResult.priceImpact * 100
             ).toFixed(2)}%`,
-            priceImpact: tradeResult.priceImpact,
           });
           return;
         }
 
-        // Execute transactions using Farcaster mini app frameTransaction
+        // Execute transactions using Farcaster mini app SDK
         let lastHash: string | undefined;
 
         for (const transaction of tradeResult.transactions) {
@@ -227,19 +180,16 @@ export function RankUpTransactions() {
               type,
               hash: lastHash,
               pointsEarned: tradingResult.pointsEarned,
-              estimatedTokens: tradeResult.estimatedTokenAmount,
-              priceImpact: tradeResult.priceImpact,
             });
 
             console.log(
-              `Trade completed! Earned ${tradingResult.pointsEarned} points, got ${tradeResult.estimatedTokenAmount} tokens`
+              `Trade completed! Earned ${tradingResult.pointsEarned} points`
             );
           } else {
             setTradeState({
               status: "error",
               type,
               error: tradingResult.error || "Trade processing failed",
-              priceImpact: tradeResult.priceImpact,
             });
           }
         }
@@ -433,13 +383,7 @@ export function RankUpTransactions() {
                 <ArrowUpRight className="h-3 w-3 text-green-500" />
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                $1.00 → ~{marketData.estimatedTokens.toFixed(2)} pTRADOOR
-              </p>
-              <p className="text-xs text-muted-foreground mb-2">
-                Price: ${marketData.pTradoorPrice.toFixed(4)}
-              </p>
-              <p className="text-xs text-muted-foreground mb-2">
-                Slippage: {(marketData.slippageTolerance * 100).toFixed(1)}%
+                $1.00 → pTRADOOR
               </p>
               <Button
                 size="sm"
@@ -471,13 +415,7 @@ export function RankUpTransactions() {
                 <ArrowUpRight className="h-3 w-3 text-red-500" />
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                ~{marketData.estimatedTokens.toFixed(2)} pTRADOOR → $1.00
-              </p>
-              <p className="text-xs text-muted-foreground mb-2">
-                Price: ${marketData.pTradoorPrice.toFixed(4)}
-              </p>
-              <p className="text-xs text-muted-foreground mb-2">
-                Slippage: {(marketData.slippageTolerance * 100).toFixed(1)}%
+                pTRADOOR → $1.00
               </p>
               <Button
                 size="sm"
