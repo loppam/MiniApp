@@ -35,7 +35,10 @@ export class BaseChainService {
     try {
       const apiKey = process.env.BASESCAN_API_KEY;
       if (!apiKey) {
-        throw new Error("BASESCAN_API_KEY is not set in environment");
+        console.warn(
+          "BASESCAN_API_KEY is not set in environment, returning empty transaction list"
+        );
+        return [];
       }
       const url = `https://api.basescan.org/api?module=account&action=txlist&address=${address}&startblock=0&endblock=99999999&sort=asc&apikey=${apiKey}`;
       const res = await fetch(url);

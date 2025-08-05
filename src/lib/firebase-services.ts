@@ -109,8 +109,7 @@ export const userService = {
         console.log("Initial points allocated:", initialPoints);
 
         // Determine the profile picture URL (prefer avatarUrl over pfpUrl)
-        const profilePictureUrl =
-          context?.user?.avatarUrl || context?.user?.pfpUrl;
+        const profilePictureUrl = context?.user?.pfpUrl || "empty";
 
         const newProfile = removeUndefinedValues({
           address,

@@ -177,7 +177,10 @@ Join me on Base chain's premier trading platform! 🚀
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
                 <Image
-                  src={profile.pfpUrl || "/default-avatar.png"}
+                  src={
+                    profile.pfpUrl ||
+                    "https://via.placeholder.com/24x24/6b7280/ffffff?text=?"
+                  }
                   alt="Profile Avatar"
                   width={24}
                   height={24}
