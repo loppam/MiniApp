@@ -76,7 +76,7 @@ export class TradingSystem {
           contractAddress: PTRADOOR_CONTRACT_ADDRESS,
           tradeType: "fixed_dollar",
           usdAmount: FIXED_TRADE_AMOUNT_USD,
-          hasMinted: profile.hasMinted,
+          hasMinted: profile.hasMinted ?? false,
         },
       });
 
