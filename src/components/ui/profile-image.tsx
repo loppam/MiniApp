@@ -32,9 +32,6 @@ export function ProfileImage({
     );
   }
 
-  // Check if it's a Farcaster image URL
-  const isFarcasterImage = src.includes("imagedelivery.net");
-
   return (
     <Avatar className={`w-${size} h-${size} ${className}`}>
       <AvatarImage
