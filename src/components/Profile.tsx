@@ -1,6 +1,6 @@
 import { useState } from "react";
-import Image from "next/image";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
+import { ProfileImageSimple } from "./ui/profile-image";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
@@ -176,15 +176,11 @@ Join me on Base chain's premier trading platform! 🚀
           <div className="flex items-center gap-3">
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <Image
-                  src={
-                    profile.pfpUrl ||
-                    "https://via.placeholder.com/24x24/6b7280/ffffff?text=?"
-                  }
+                <ProfileImageSimple
+                  src={profile.pfpUrl}
                   alt="Profile Avatar"
-                  width={24}
-                  height={24}
-                  className="rounded-full"
+                  size={24}
+                  fallbackText="?"
                 />
                 <h3 className="text-sm font-bold">
                   {profile.username ||

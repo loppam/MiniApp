@@ -17,6 +17,7 @@ import { useUserProfile, useTransactions } from "~/hooks/useFirebase";
 import { Timestamp } from "firebase/firestore";
 import { useState, useCallback } from "react";
 import { TradingSystem } from "~/lib/trading-system";
+import { PriceService } from "~/lib/price-service";
 
 // Import Farcaster mini app SDK
 import { sdk } from "@farcaster/miniapp-sdk";
@@ -112,43 +113,86 @@ export function RankUpTransactions() {
       try {
         console.log(`Executing dynamic $1 ${type} trade`);
 
+        // Get current price data for accurate calculations
+        let priceData;
+        try {
+          priceData = await PriceService.getPriceData();
+          console.log("Current price data:", priceData);
+        } catch (priceError) {
+          console.warn("Failed to get price data, using fallback:", priceError);
+          // Use fallback prices
+          priceData = {
+            ethPrice: 3000,
+            pTradoorPrice: 0.045,
+            lastUpdated: Date.now(),
+            source: "fallback",
+          };
+        }
+
         // Use Farcaster's native swap functionality
         let swapResult;
 
         if (type === "buy") {
           // Buy: ETH → pTradoor
+          // Calculate ETH amount for $1 USD
+          const ethAmountForOneDollar = 1 / priceData.ethPrice;
+          const ethAmountInWei = Math.floor(
+            ethAmountForOneDollar * 1e18
+          ).toString();
+
           swapResult = await sdk.actions.swapToken({
             sellToken:
               "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // WETH
             buyToken:
               "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
-            sellAmount: "1000000000000000000", // 1 ETH (18 decimals)
+            sellAmount: ethAmountInWei, // ETH amount worth $1
           });
         } else {
           // Sell: pTradoor → ETH
+          // Calculate the amount of pTradoor tokens that equals $1 USD
+          const tokenAmountForOneDollar = 1 / priceData.pTradoorPrice;
+          const tokenAmountInWei = Math.floor(
+            tokenAmountForOneDollar * 1e18
+          ).toString();
+
+          console.log(
+            `Selling ${tokenAmountForOneDollar} pTradoor tokens (worth $1)`
+          );
+
           swapResult = await sdk.actions.swapToken({
             sellToken:
               "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
             buyToken:
               "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // WETH
-            sellAmount: "1000000000000000000", // 1 pTradoor (18 decimals)
+            sellAmount: tokenAmountInWei, // Amount of pTradoor tokens worth $1
           });
         }
 
         console.log("Farcaster swap result:", swapResult);
 
-        // Execute the trading system logic
+        // Check if the swap was actually completed or cancelled
+        if (!swapResult || !swapResult.success) {
+          console.log("Swap was cancelled or failed");
+          setTradeState({
+            status: "error",
+            type,
+            error: "Swap was cancelled or failed",
+          });
+          return;
+        }
+
+        // Only proceed with trading system if swap was successful
         const tradingResult = await TradingSystem.executeFixedTrade({
           userAddress: address,
           type,
-          txHash: "farcaster_swap", // Use a placeholder since Farcaster handles the actual transaction
+          txHash: "farcaster_swap", // Use placeholder since SDK doesn't provide txHash
         });
 
         if (tradingResult.success) {
           setTradeState({
             status: "success",
             type,
-            hash: "farcaster_swap",
+            hash: "farcaster_swap", // Use placeholder since SDK doesn't provide txHash
             pointsEarned: tradingResult.pointsEarned,
           });
 
@@ -358,13 +402,18 @@ export function RankUpTransactions() {
                 size="sm"
                 className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
                 onClick={handleBuy}
-                disabled={isConfirming}
+                disabled={isConfirming || tradeState.status === "pending"}
               >
-                {isConfirming ? (
+                {isConfirming ||
+                (tradeState.status === "pending" &&
+                  tradeState.type === "buy") ? (
                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                 ) : (
                   "Buy"
                 )}
+                {tradeState.status === "pending" &&
+                  tradeState.type === "buy" &&
+                  "..."}
               </Button>
               {tradeState.status === "error" && tradeState.type === "buy" && (
                 <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
@@ -390,13 +439,18 @@ export function RankUpTransactions() {
                 size="sm"
                 className="w-full bg-red-600 hover:bg-red-700 text-white text-xs"
                 onClick={handleSell}
-                disabled={isConfirming}
+                disabled={isConfirming || tradeState.status === "pending"}
               >
-                {isConfirming ? (
+                {isConfirming ||
+                (tradeState.status === "pending" &&
+                  tradeState.type === "sell") ? (
                   <Loader2 className="h-3 w-3 mr-2 animate-spin" />
                 ) : (
                   "Sell"
                 )}
+                {tradeState.status === "pending" &&
+                  tradeState.type === "sell" &&
+                  "..."}
               </Button>
               {tradeState.status === "error" && tradeState.type === "sell" && (
                 <div className="text-xs text-red-500 mt-2 flex items-center gap-1">
@@ -421,6 +475,13 @@ export function RankUpTransactions() {
               </span>
             )}
           </div>
+
+          {tradeState.status === "pending" && (
+            <div className="text-center text-xs text-blue-500 mt-2 flex items-center justify-center gap-1">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              Swap window open - complete the transaction to earn points
+            </div>
+          )}
         </CardContent>
       </Card>
 
