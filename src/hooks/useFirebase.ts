@@ -161,35 +161,69 @@ export function usePlatformStats() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    console.log("Loading platform stats");
+    console.log("🔄 usePlatformStats: Starting to load platform stats");
     setLoading(true);
     setError(null);
 
     // Initialize platform stats if they don't exist
     const initializeStats = async () => {
       try {
+        console.log("🔄 usePlatformStats: Initializing platform stats...");
         const { platformStatsService } = await import(
           "~/lib/firebase-services"
         );
         await platformStatsService.initializePlatformStats();
+        console.log(
+          "🔄 usePlatformStats: Platform stats initialization completed"
+        );
       } catch (error) {
-        console.error("Error initializing platform stats:", error);
+        console.error(
+          "🔄 usePlatformStats: Error initializing platform stats:",
+          error
+        );
       }
     };
 
     initializeStats();
 
     // Set up real-time listener for platform stats updates
+    console.log("🔄 usePlatformStats: Setting up real-time listener...");
     const unsubscribe = createRealtimeListeners.onPlatformStatsChange(
       (platformStats: PlatformStats | null) => {
-        console.log("Platform stats updated:", platformStats);
+        console.log(
+          "🔄 usePlatformStats: Platform stats updated:",
+          platformStats
+        );
         setStats(platformStats);
         setLoading(false);
       }
     );
 
+    // Add a timeout to ensure we don't stay loading forever
+    const timeout = setTimeout(async () => {
+      if (loading) {
+        console.log(
+          "🔄 usePlatformStats: Timeout reached, trying manual fetch..."
+        );
+        try {
+          const { platformStatsService } = await import(
+            "~/lib/firebase-services"
+          );
+          const manualStats = await platformStatsService.getPlatformStats();
+          console.log("🔄 usePlatformStats: Manual fetch result:", manualStats);
+          setStats(manualStats);
+          setLoading(false);
+        } catch (error) {
+          console.error("🔄 usePlatformStats: Manual fetch failed:", error);
+          setLoading(false);
+          setError("Failed to load platform stats");
+        }
+      }
+    }, 10000); // 10 second timeout
+
     return () => {
-      console.log("Cleaning up platform stats listener");
+      console.log("🔄 usePlatformStats: Cleaning up platform stats listener");
+      clearTimeout(timeout);
       unsubscribe();
     };
   }, []);

@@ -215,6 +215,17 @@ export default function AdminPage() {
     }
   };
 
+  const handleRecalculatePlatformStats = async () => {
+    try {
+      console.log("Recalculating platform stats...");
+      await platformStatsService.recalculatePlatformStats();
+      await loadData(); // Reload data to show updated stats
+      console.log("Platform stats recalculated successfully");
+    } catch (error) {
+      console.error("Error recalculating platform stats:", error);
+    }
+  };
+
   const getRarityColor = (rarity: string) => {
     switch (rarity) {
       case "common":
@@ -796,6 +807,9 @@ export default function AdminPage() {
                 </Card>
               </div>
             )}
+            <Button onClick={handleRecalculatePlatformStats} className="w-full">
+              Recalculate Platform Stats
+            </Button>
           </TabsContent>
 
           {/* Overview Tab */}

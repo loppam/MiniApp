@@ -141,17 +141,15 @@ export const userService = {
 
         // Update platform stats to increment totalUsers
         try {
-          const currentStats = await platformStatsService.getPlatformStats();
-          if (currentStats) {
-            await platformStatsService.updatePlatformStats({
-              totalUsers: currentStats.totalUsers + 1,
-              totalPoints: currentStats.totalPoints + initialPoints.points,
-            });
-            console.log(
-              "Platform stats updated - totalUsers incremented, totalPoints incremented by",
-              initialPoints.points
-            );
-          }
+          const currentStats = await platformStatsService.ensurePlatformStats();
+          await platformStatsService.updatePlatformStats({
+            totalUsers: currentStats.totalUsers + 1,
+            totalPoints: currentStats.totalPoints + initialPoints.points,
+          });
+          console.log(
+            "Platform stats updated - totalUsers incremented, totalPoints incremented by",
+            initialPoints.points
+          );
         } catch (statsError) {
           console.error("Error updating platform stats:", statsError);
         }
@@ -275,16 +273,14 @@ export const userService = {
 
       // Update platform stats to increment totalPoints
       try {
-        const currentStats = await platformStatsService.getPlatformStats();
-        if (currentStats) {
-          await platformStatsService.updatePlatformStats({
-            totalPoints: currentStats.totalPoints + pointsToAdd,
-          });
-          console.log(
-            "Platform stats updated - totalPoints incremented by",
-            pointsToAdd
-          );
-        }
+        const currentStats = await platformStatsService.ensurePlatformStats();
+        await platformStatsService.updatePlatformStats({
+          totalPoints: currentStats.totalPoints + pointsToAdd,
+        });
+        console.log(
+          "Platform stats updated - totalPoints incremented by",
+          pointsToAdd
+        );
       } catch (statsError) {
         console.error("Error updating platform stats:", statsError);
       }
@@ -399,13 +395,11 @@ export const transactionService = {
 
       // Update platform stats to increment totalTransactions
       try {
-        const currentStats = await platformStatsService.getPlatformStats();
-        if (currentStats) {
-          await platformStatsService.updatePlatformStats({
-            totalTransactions: currentStats.totalTransactions + 1,
-          });
-          console.log("Platform stats updated - totalTransactions incremented");
-        }
+        const currentStats = await platformStatsService.ensurePlatformStats();
+        await platformStatsService.updatePlatformStats({
+          totalTransactions: currentStats.totalTransactions + 1,
+        });
+        console.log("Platform stats updated - totalTransactions incremented");
       } catch (statsError) {
         console.error("Error updating platform stats:", statsError);
       }
@@ -703,8 +697,19 @@ export const platformStatsService = {
   // Get platform stats
   async getPlatformStats(): Promise<PlatformStats | null> {
     try {
+      console.log("🔍 Getting platform stats...");
       const statsDoc = await getDoc(doc(db, "platformStats", "current"));
-      return statsDoc.exists() ? (statsDoc.data() as PlatformStats) : null;
+      const exists = statsDoc.exists();
+      console.log("Platform stats document exists:", exists);
+
+      if (exists) {
+        const data = statsDoc.data() as PlatformStats;
+        console.log("Platform stats data:", data);
+        return data;
+      } else {
+        console.log("Platform stats document does not exist");
+        return null;
+      }
     } catch (error) {
       console.error("Error getting platform stats:", error);
       return null;
@@ -714,31 +719,109 @@ export const platformStatsService = {
   // Initialize platform stats if they don't exist
   async initializePlatformStats(): Promise<void> {
     try {
+      console.log("🔧 Initializing platform stats...");
       const statsDoc = await getDoc(doc(db, "platformStats", "current"));
-      if (!statsDoc.exists()) {
-        console.log("Initializing platform stats...");
+      const exists = statsDoc.exists();
+      console.log(
+        "Platform stats document exists before initialization:",
+        exists
+      );
+
+      if (!exists) {
+        console.log("Creating platform stats document...");
         await setDoc(doc(db, "platformStats", "current"), {
           totalUsers: 0,
           totalTransactions: 0,
           totalPoints: 0,
+          ptradoorSupply: 1000000,
+          ptradoorCirculating: 245000,
           lastUpdated: serverTimestamp(),
         });
-        console.log("Platform stats initialized");
+        console.log("Platform stats initialized successfully");
+      } else {
+        console.log("Platform stats already exist, skipping initialization");
       }
     } catch (error) {
       console.error("Error initializing platform stats:", error);
     }
   },
 
+  // Ensure platform stats exist and return them
+  async ensurePlatformStats(): Promise<PlatformStats> {
+    try {
+      console.log("🔧 Ensuring platform stats exist...");
+      let stats = await this.getPlatformStats();
+
+      if (!stats) {
+        console.log("Platform stats don't exist, creating them...");
+        await this.initializePlatformStats();
+        stats = await this.getPlatformStats();
+
+        if (!stats) {
+          throw new Error("Failed to create platform stats");
+        }
+      }
+
+      return stats;
+    } catch (error) {
+      console.error("Error ensuring platform stats:", error);
+      throw error;
+    }
+  },
+
   // Update platform stats
   async updatePlatformStats(stats: Partial<PlatformStats>): Promise<void> {
     try {
+      console.log("📊 Updating platform stats:", stats);
       await setDoc(doc(db, "platformStats", "current"), {
         ...stats,
         lastUpdated: serverTimestamp(),
       });
+      console.log("Platform stats updated successfully");
     } catch (error) {
       console.error("Error updating platform stats:", error);
+    }
+  },
+
+  // Recalculate platform stats from existing user data
+  async recalculatePlatformStats(): Promise<void> {
+    try {
+      console.log("🔄 Recalculating platform stats from user data...");
+
+      // Get all users
+      const usersQuery = query(collection(db, "users"));
+      const usersSnapshot = await getDocs(usersQuery);
+
+      // Get all transactions
+      const transactionsQuery = query(collection(db, "transactions"));
+      const transactionsSnapshot = await getDocs(transactionsQuery);
+
+      // Calculate totals
+      const totalUsers = usersSnapshot.size;
+      const totalTransactions = transactionsSnapshot.size;
+      const totalPoints = usersSnapshot.docs.reduce((sum, doc) => {
+        const userData = doc.data() as UserProfile;
+        return sum + (userData.totalPoints || 0);
+      }, 0);
+
+      console.log("Calculated stats:", {
+        totalUsers,
+        totalTransactions,
+        totalPoints,
+      });
+
+      // Update platform stats
+      await this.updatePlatformStats({
+        totalUsers,
+        totalTransactions,
+        totalPoints,
+        ptradoorSupply: 1000000,
+        ptradoorCirculating: 245000,
+      });
+
+      console.log("Platform stats recalculated successfully");
+    } catch (error) {
+      console.error("Error recalculating platform stats:", error);
     }
   },
 };
@@ -865,8 +948,21 @@ export const createRealtimeListeners = {
 
   // Listen to platform stats changes
   onPlatformStatsChange: (callback: (stats: PlatformStats | null) => void) => {
+    console.log("🔔 Setting up platform stats real-time listener...");
     return onSnapshot(doc(db, "platformStats", "current"), (doc) => {
-      callback(doc.exists() ? (doc.data() as PlatformStats) : null);
+      const exists = doc.exists();
+      console.log("Platform stats real-time update - document exists:", exists);
+
+      if (exists) {
+        const data = doc.data() as PlatformStats;
+        console.log("Platform stats real-time data:", data);
+        callback(data);
+      } else {
+        console.log(
+          "Platform stats real-time update - document does not exist"
+        );
+        callback(null);
+      }
     });
   },
 
