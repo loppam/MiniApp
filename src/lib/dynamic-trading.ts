@@ -15,8 +15,13 @@ const publicClient = createPublicClient({
 
 // Uniswap V2 Router ABI (essential functions only)
 const UNISWAP_V2_ROUTER_ABI = parseAbi([
+  // Exact-in (we spend exact input and receive at least min output)
   "function swapExactETHForTokens(uint256 amountOutMin, address[] calldata path, address to, uint256 deadline) external payable returns (uint256[] memory amounts)",
   "function swapExactTokensForETH(uint256 amountIn, uint256 amountOutMin, address[] calldata path, address to, uint256 deadline) external returns (uint256[] memory amounts)",
+  // Exact-out (we receive exact output and spend at most max input)
+  "function swapETHForExactTokens(uint256 amountOut, address[] calldata path, address to, uint256 deadline) external payable returns (uint256[] memory amounts)",
+  "function swapTokensForExactETH(uint256 amountOut, uint256 amountInMax, address[] calldata path, address to, uint256 deadline) external returns (uint256[] memory amounts)",
+  // Pricing helpers
   "function getAmountsOut(uint256 amountIn, address[] calldata path) external view returns (uint256[] memory amounts)",
   "function getAmountsIn(uint256 amountOut, address[] calldata path) external view returns (uint256[] memory amounts)",
 ]);
@@ -270,9 +275,26 @@ export class DynamicTradingService {
     slippageTolerance: number = this.DEFAULT_SLIPPAGE
   ): Promise<DynamicTradeResult> {
     try {
-      // Calculate token amount to sell
-      const tokenAmount = await this.calculateTokenAmount(usdAmount);
-      const tokenAmountWei = BigInt(Math.floor(tokenAmount * 1e18));
+      // Target exact ETH output equal to the USD amount
+      const ethPrice = await PriceService.getETHPrice();
+      const desiredEthOut = usdAmount / ethPrice; // ETH amount to receive
+      const desiredEthOutWei = BigInt(Math.floor(desiredEthOut * 1e18));
+
+      // Define swap path: pTradoor → WETH
+      const path = [
+        PTRADOOR_TOKEN_ADDRESS as `0x${string}`,
+        WETH_ADDRESS as `0x${string}`,
+      ];
+
+      // Get required token input for exact ETH output
+      const quote = await this.getSwapQuote(desiredEthOutWei, false, path);
+      const requiredTokenInWei = quote.inputAmount; // exact token input required
+
+      // Add slippage buffer to max input (amountInMax)
+      const amountInMax =
+        (requiredTokenInWei *
+          BigInt(Math.floor((1 + slippageTolerance) * 10000))) /
+        10000n;
 
       // Check user balance
       const balance = await publicClient.readContract({
@@ -282,8 +304,8 @@ export class DynamicTradingService {
         args: [userAddress as `0x${string}`],
       });
 
-      const userBalance = Number(balance) / 1e18;
-      if (userBalance < tokenAmount) {
+      const userBalanceWei = balance as bigint;
+      if (userBalanceWei < amountInMax) {
         return {
           success: false,
           transactions: [],
@@ -291,28 +313,11 @@ export class DynamicTradingService {
           estimatedUSDValue: 0,
           priceImpact: 0,
           slippageTolerance,
-          error: `Insufficient balance. You have ${userBalance.toFixed(
-            2
-          )} pTradoor, need ${tokenAmount.toFixed(2)}`,
+          error: `Insufficient balance for exact-out swap`,
         };
       }
 
-      // Define swap path: pTradoor → WETH
-      const path = [
-        PTRADOOR_TOKEN_ADDRESS as `0x${string}`,
-        WETH_ADDRESS as `0x${string}`,
-      ];
-
-      // Get swap quote
-      const quote = await this.getSwapQuote(tokenAmountWei, true, path);
-
-      // Calculate minimum output with slippage protection
-      const minOutputAmount =
-        (quote.outputAmount *
-          BigInt(Math.floor((1 - slippageTolerance) * 10000))) /
-        10000n;
-
-      // Check price impact
+      // Check price impact (placeholder)
       if (quote.priceImpact > this.MAX_PRICE_IMPACT) {
         return {
           success: false,
@@ -341,11 +346,11 @@ export class DynamicTradingService {
       });
 
       // If allowance is insufficient, add approve transaction
-      if ((allowance as bigint) < tokenAmountWei) {
+      if ((allowance as bigint) < amountInMax) {
         const approveData = encodeFunctionData({
           abi: ERC20_ABI,
           functionName: "approve",
-          args: [UNISWAP_V2_ROUTER, tokenAmountWei],
+          args: [UNISWAP_V2_ROUTER, amountInMax],
         });
 
         transactions.push({
@@ -355,13 +360,13 @@ export class DynamicTradingService {
         });
       }
 
-      // Encode swap transaction
+      // Encode exact-out swap transaction to receive exactly desiredEthOutWei
       const swapData = encodeFunctionData({
         abi: UNISWAP_V2_ROUTER_ABI,
-        functionName: "swapExactTokensForETH",
+        functionName: "swapTokensForExactETH",
         args: [
-          tokenAmountWei,
-          minOutputAmount,
+          desiredEthOutWei, // exact ETH to receive
+          amountInMax, // max tokens to spend
           path,
           userAddress as `0x${string}`,
           deadline,
@@ -374,14 +379,14 @@ export class DynamicTradingService {
         chainId: "eip155:8453",
       });
 
-      const estimatedUSDValue =
-        (Number(quote.outputAmount) / 1e18) *
-        (await PriceService.getETHPrice());
+      // Estimateds
+      const estimatedTokenAmount = Number(requiredTokenInWei) / 1e18;
+      const estimatedUSDValue = usdAmount;
 
       return {
         success: true,
         transactions,
-        estimatedTokenAmount: tokenAmount,
+        estimatedTokenAmount,
         estimatedUSDValue,
         priceImpact: quote.priceImpact,
         slippageTolerance,
