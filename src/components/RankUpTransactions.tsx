@@ -2,7 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
-import { Input } from "./ui/input";
 import {
   Coins,
   TrendingUp,
@@ -83,8 +82,8 @@ export function RankUpTransactions() {
     pointsEarned?: number;
   }>({ status: "idle" });
 
-  // Trade amount state
-  const [tradeAmount, setTradeAmount] = useState<number>(1);
+  // Fixed trade amount (exact $1)
+  const tradeAmount = 1;
 
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash: tradeState.hash as `0x${string}`,
@@ -117,6 +116,24 @@ export function RankUpTransactions() {
       try {
         console.log(`Executing dynamic $${tradeAmount} ${type} trade`);
 
+        // Ensure we are in a Farcaster environment capable of showing the wallet swap
+        try {
+          const context = await sdk.context;
+          if (!context) {
+            throw new Error(
+              "Farcaster context not available. Open inside Warpcast."
+            );
+          }
+        } catch {
+          setTradeState({
+            status: "error",
+            type,
+            error:
+              "Swap not available in this environment. Please open this in Warpcast to continue.",
+          });
+          return;
+        }
+
         // Get current price data for accurate calculations
         let priceData;
         try {
@@ -145,8 +162,7 @@ export function RankUpTransactions() {
           ).toString();
 
           swapResult = await sdk.actions.swapToken({
-            sellToken:
-              "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // WETH
+            sellToken: "eip155:8453/slip44:60", // Native ETH on Base
             buyToken:
               "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
             sellAmount: ethAmountInWei, // ETH amount worth trade USD amount
@@ -166,8 +182,7 @@ export function RankUpTransactions() {
           swapResult = await sdk.actions.swapToken({
             sellToken:
               "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
-            buyToken:
-              "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // WETH
+            buyToken: "eip155:8453/slip44:60", // Native ETH on Base
             sellAmount: tokenAmountInWei, // Amount of pTradoor tokens worth trade USD amount
           });
         }
@@ -394,24 +409,7 @@ export function RankUpTransactions() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
-          <div className="space-y-3">
-            <div className="space-y-2">
-              <label className="text-sm font-medium text-muted-foreground">
-                Trade Amount (USD)
-              </label>
-              <Input
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={tradeAmount}
-                onChange={(e) =>
-                  setTradeAmount(parseFloat(e.target.value) || 0.01)
-                }
-                className="text-sm"
-                placeholder="Enter USD amount"
-              />
-            </div>
-          </div>
+          <div className="space-y-3" />
           <div className="grid grid-cols-2 gap-2">
             <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
               <div className="flex items-center justify-between mb-1">
@@ -491,11 +489,7 @@ export function RankUpTransactions() {
           </div>
 
           <div className="text-center text-xs text-muted-foreground">
-            ${tradeAmount.toFixed(2)} trade earns{" "}
-            {Math.max(
-              Math.floor(tradeAmount * (profile?.hasMinted ? 15 : 5)),
-              Math.floor(tradeAmount)
-            )}{" "}
+            ${tradeAmount.toFixed(2)} trade earns {profile?.hasMinted ? 15 : 5}{" "}
             points
             {profile?.hasMinted && (
               <span className="text-green-500 ml-1">
