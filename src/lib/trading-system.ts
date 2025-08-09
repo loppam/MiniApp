@@ -7,8 +7,7 @@ import {
 // pTradoor token contract address on Base
 const PTRADOOR_CONTRACT_ADDRESS = "0x41Ed0311640A5e489A90940b1c33433501a21B07";
 
-// Fixed trading constants
-const FIXED_TRADE_AMOUNT_USD = 1; // $1 fixed amount
+// Trading constants
 const BASE_POINTS_PER_TRADE = 5; // Base points for each trade
 const MINTING_MULTIPLIER = 3; // 3x points for users who have minted
 const POINTS_PER_PTRADOOR_HOLD = 0.1; // per day
@@ -33,19 +32,18 @@ export interface TradeStats {
   currentStreak: number;
 }
 
-export interface FixedTradeRequest {
+export interface TradeRequest {
   userAddress: string;
   type: "buy" | "sell";
+  usdAmount: number;
   txHash?: string;
 }
 
 export class TradingSystem {
-  // Execute a fixed $1 pTradoor trade
-  static async executeFixedTrade(
-    request: FixedTradeRequest
-  ): Promise<TradeResult> {
+  // Execute a pTradoor trade with dynamic USD amount
+  static async executeTrade(request: TradeRequest): Promise<TradeResult> {
     try {
-      const { userAddress, type, txHash } = request;
+      const { userAddress, type, usdAmount, txHash } = request;
 
       // Get user profile to check minting status
       const profile = await userService.getUserProfile(userAddress);
@@ -54,28 +52,29 @@ export class TradingSystem {
       }
 
       // Calculate points for this trade
-      const pointsEarned = this.calculateFixedTradePoints(
+      const pointsEarned = this.calculateTradePoints(
+        usdAmount,
         profile.hasMinted ?? false
       );
 
       // Calculate token amount based on current price (simplified)
       // In production, you'd get this from a price oracle or DEX
-      const tokenAmount = this.calculateTokenAmount();
+      const tokenAmount = this.calculateTokenAmount(usdAmount);
 
       // Record the transaction
       const transactionId = await transactionService.addTransaction({
         userAddress,
         type,
         amount: tokenAmount,
-        price: FIXED_TRADE_AMOUNT_USD,
+        price: usdAmount,
         points: pointsEarned,
         status: "completed",
         txHash,
         metadata: {
           chainId: 8453, // Base chain
           contractAddress: PTRADOOR_CONTRACT_ADDRESS,
-          tradeType: "fixed_dollar",
-          usdAmount: FIXED_TRADE_AMOUNT_USD,
+          tradeType: "dynamic_dollar",
+          usdAmount: usdAmount,
           hasMinted: profile.hasMinted ?? false,
         },
       });
@@ -106,93 +105,6 @@ export class TradingSystem {
         txHash,
       };
     } catch (error) {
-      console.error("Fixed trade execution failed:", error);
-      return {
-        success: false,
-        pointsEarned: 0,
-        newBalance: 0,
-        achievementsUnlocked: [],
-        error: error instanceof Error ? error.message : "Unknown error",
-      };
-    }
-  }
-
-  // Calculate points for a fixed $1 trade
-  private static calculateFixedTradePoints(hasMinted: boolean): number {
-    let points = BASE_POINTS_PER_TRADE;
-
-    // Apply minting multiplier if user has minted
-    if (hasMinted) {
-      points *= MINTING_MULTIPLIER;
-    }
-
-    return points;
-  }
-
-  // Calculate token amount for $1 trade
-  // In production, this would fetch from a price oracle or DEX
-  private static calculateTokenAmount(): number {
-    // Simplified calculation - in production you'd get real-time price
-    const currentPrice = 0.045; // $0.045 per token (example)
-    const tokenAmount = FIXED_TRADE_AMOUNT_USD / currentPrice;
-
-    // Round to 2 decimal places for consistency
-    return Math.round(tokenAmount * 100) / 100;
-  }
-
-  // Execute a pTradoor trade (legacy method - kept for backward compatibility)
-  static async executeTrade(
-    userAddress: string,
-    type: "buy" | "sell",
-    amount: number,
-    price: number,
-    txHash?: string
-  ): Promise<TradeResult> {
-    try {
-      // Calculate points for this trade
-      const pointsEarned = this.calculateTradePoints(amount, type);
-
-      // Record the transaction
-      const transactionId = await transactionService.addTransaction({
-        userAddress,
-        type,
-        amount,
-        price,
-        points: pointsEarned,
-        status: "completed",
-        txHash,
-        metadata: {
-          chainId: 8453, // Base chain
-          contractAddress: PTRADOOR_CONTRACT_ADDRESS,
-        },
-      });
-
-      // Update user points and balance
-      await userService.updateUserPoints(userAddress, pointsEarned);
-
-      // Update pTradoor balance
-      await this.updatePTradoorBalance(userAddress, amount, type);
-
-      // Check for achievements
-      const achievementsUnlocked =
-        await achievementService.checkAndAwardAchievements(userAddress);
-
-      // Check for tier upgrade
-      const profile = await userService.getUserProfile(userAddress);
-      const tierUpgrade = profile?.tier;
-
-      // Update trade stats
-      await this.updateTradeStats(userAddress);
-
-      return {
-        success: true,
-        transactionId,
-        pointsEarned,
-        newBalance: profile?.ptradoorBalance || 0,
-        tierUpgrade,
-        achievementsUnlocked,
-      };
-    } catch (error) {
       console.error("Trade execution failed:", error);
       return {
         success: false,
@@ -204,24 +116,34 @@ export class TradingSystem {
     }
   }
 
-  // Calculate points for a trade (legacy method)
+  // Calculate points for a trade based on USD amount
   private static calculateTradePoints(
-    amount: number,
-    type: "buy" | "sell"
+    usdAmount: number,
+    hasMinted: boolean
   ): number {
-    let points = BASE_POINTS_PER_TRADE;
+    // Base points scaled by trade amount (minimum 1 point per dollar)
+    let points = Math.max(
+      Math.floor(usdAmount * BASE_POINTS_PER_TRADE),
+      Math.floor(usdAmount)
+    );
 
-    // Bonus for large trades
-    if (amount > 1000) {
-      points += 10;
-    }
-
-    // Additional points for buying (encouraging accumulation)
-    if (type === "buy") {
-      points += Math.floor(amount / 100); // 1 point per 100 pTradoor bought
+    // Apply minting multiplier if user has minted
+    if (hasMinted) {
+      points *= MINTING_MULTIPLIER;
     }
 
     return points;
+  }
+
+  // Calculate token amount for USD trade
+  // In production, this would fetch from a price oracle or DEX
+  private static calculateTokenAmount(usdAmount: number): number {
+    // Simplified calculation - in production you'd get real-time price
+    const currentPrice = 0.045; // $0.045 per token (example)
+    const tokenAmount = usdAmount / currentPrice;
+
+    // Round to 2 decimal places for consistency
+    return Math.round(tokenAmount * 100) / 100;
   }
 
   // Update pTradoor balance

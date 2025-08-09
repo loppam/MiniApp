@@ -2,6 +2,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Button } from "./ui/Button";
 import { Badge } from "./ui/badge";
 import { Progress } from "./ui/progress";
+import { Input } from "./ui/input";
 import {
   Coins,
   TrendingUp,
@@ -82,6 +83,9 @@ export function RankUpTransactions() {
     pointsEarned?: number;
   }>({ status: "idle" });
 
+  // Trade amount state
+  const [tradeAmount, setTradeAmount] = useState<number>(1);
+
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash: tradeState.hash as `0x${string}`,
   });
@@ -111,7 +115,7 @@ export function RankUpTransactions() {
       });
 
       try {
-        console.log(`Executing dynamic $1 ${type} trade`);
+        console.log(`Executing dynamic $${tradeAmount} ${type} trade`);
 
         // Get current price data for accurate calculations
         let priceData;
@@ -134,10 +138,10 @@ export function RankUpTransactions() {
 
         if (type === "buy") {
           // Buy: ETH → pTradoor
-          // Calculate ETH amount for $1 USD
-          const ethAmountForOneDollar = 1 / priceData.ethPrice;
+          // Calculate ETH amount for trade USD amount
+          const ethAmountForTrade = tradeAmount / priceData.ethPrice;
           const ethAmountInWei = Math.floor(
-            ethAmountForOneDollar * 1e18
+            ethAmountForTrade * 1e18
           ).toString();
 
           swapResult = await sdk.actions.swapToken({
@@ -145,18 +149,18 @@ export function RankUpTransactions() {
               "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // WETH
             buyToken:
               "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
-            sellAmount: ethAmountInWei, // ETH amount worth $1
+            sellAmount: ethAmountInWei, // ETH amount worth trade USD amount
           });
         } else {
           // Sell: pTradoor → ETH
-          // Calculate the amount of pTradoor tokens that equals $1 USD
-          const tokenAmountForOneDollar = 1 / priceData.pTradoorPrice;
+          // Calculate the amount of pTradoor tokens that equals trade USD amount
+          const tokenAmountForTrade = tradeAmount / priceData.pTradoorPrice;
           const tokenAmountInWei = Math.floor(
-            tokenAmountForOneDollar * 1e18
+            tokenAmountForTrade * 1e18
           ).toString();
 
           console.log(
-            `Selling ${tokenAmountForOneDollar} pTradoor tokens (worth $1)`
+            `Selling ${tokenAmountForTrade} pTradoor tokens (worth $${tradeAmount})`
           );
 
           swapResult = await sdk.actions.swapToken({
@@ -164,7 +168,7 @@ export function RankUpTransactions() {
               "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
             buyToken:
               "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // WETH
-            sellAmount: tokenAmountInWei, // Amount of pTradoor tokens worth $1
+            sellAmount: tokenAmountInWei, // Amount of pTradoor tokens worth trade USD amount
           });
         }
 
@@ -182,9 +186,10 @@ export function RankUpTransactions() {
         }
 
         // Only proceed with trading system if swap was successful
-        const tradingResult = await TradingSystem.executeFixedTrade({
+        const tradingResult = await TradingSystem.executeTrade({
           userAddress: address,
           type,
+          usdAmount: tradeAmount,
           txHash: "farcaster_swap", // Use placeholder since SDK doesn't provide txHash
         });
 
@@ -215,7 +220,7 @@ export function RankUpTransactions() {
         });
       }
     },
-    [address, isConnected]
+    [address, isConnected, tradeAmount]
   );
 
   const handleBuy = useCallback(() => {
@@ -389,6 +394,24 @@ export function RankUpTransactions() {
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-muted-foreground">
+                Trade Amount (USD)
+              </label>
+              <Input
+                type="number"
+                min="0.01"
+                step="0.01"
+                value={tradeAmount}
+                onChange={(e) =>
+                  setTradeAmount(parseFloat(e.target.value) || 0.01)
+                }
+                className="text-sm"
+                placeholder="Enter USD amount"
+              />
+            </div>
+          </div>
           <div className="grid grid-cols-2 gap-2">
             <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
               <div className="flex items-center justify-between mb-1">
@@ -396,7 +419,7 @@ export function RankUpTransactions() {
                 <ArrowUpRight className="h-3 w-3 text-green-500" />
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                $1.00 → pTRADOOR
+                ${tradeAmount.toFixed(2)} → pTRADOOR
               </p>
               <Button
                 size="sm"
@@ -433,7 +456,7 @@ export function RankUpTransactions() {
                 <ArrowUpRight className="h-3 w-3 text-red-500" />
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                pTRADOOR → $1.00
+                pTRADOOR → ${tradeAmount.toFixed(2)}
               </p>
               <Button
                 size="sm"
@@ -468,7 +491,12 @@ export function RankUpTransactions() {
           </div>
 
           <div className="text-center text-xs text-muted-foreground">
-            Each $1 trade earns {profile?.hasMinted ? "15" : "5"} points
+            ${tradeAmount.toFixed(2)} trade earns{" "}
+            {Math.max(
+              Math.floor(tradeAmount * (profile?.hasMinted ? 15 : 5)),
+              Math.floor(tradeAmount)
+            )}{" "}
+            points
             {profile?.hasMinted && (
               <span className="text-green-500 ml-1">
                 (3x multiplier active)

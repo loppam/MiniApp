@@ -77,9 +77,11 @@ export class TokenMonitor {
             result.processedTransactions++;
 
             // Award points for the transaction
-            const tradeResult = await TradingSystem.executeFixedTrade({
+            // Use minimal USD amount since we're monitoring existing transfers
+            const tradeResult = await TradingSystem.executeTrade({
               userAddress: address,
               type: "buy", // Assume buy for incoming transfers
+              usdAmount: 1, // Default amount for monitoring existing transactions
               txHash: transaction.hash,
             });
 
@@ -243,8 +245,6 @@ export class TokenMonitor {
 
     return result;
   }
-
-
 
   /**
    * Get current token price (simplified - in production use price oracle)
