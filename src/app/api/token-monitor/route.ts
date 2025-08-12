@@ -21,10 +21,34 @@ export async function POST(request: NextRequest) {
           );
         }
 
+        // If no explicit block range provided, scan only the most recent window for speed
+        let effectiveFrom: bigint | undefined = undefined;
+        let effectiveTo: bigint | undefined = undefined;
+        if (!fromBlock && !toBlock) {
+          try {
+            // Dynamically import viem to get latest block number
+            const { createPublicClient, http } = await import("viem");
+            const { base } = await import("wagmi/chains");
+            const client = createPublicClient({
+              chain: base,
+              transport: http(),
+            });
+            const latest = await client.getBlockNumber();
+            const window = 250n; // scan last 250 blocks
+            effectiveTo = latest;
+            effectiveFrom = latest > window ? latest - window : 0n;
+          } catch {
+            // Fallback: leave undefined which defaults to latest-only in monitor
+          }
+        } else {
+          effectiveFrom = fromBlock ? BigInt(fromBlock) : undefined;
+          effectiveTo = toBlock ? BigInt(toBlock) : undefined;
+        }
+
         const addressResult = await TokenMonitor.monitorAddressTransactions(
           address,
-          fromBlock ? BigInt(fromBlock) : undefined,
-          toBlock ? BigInt(toBlock) : undefined
+          effectiveFrom,
+          effectiveTo
         );
 
         return NextResponse.json({

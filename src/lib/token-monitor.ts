@@ -56,13 +56,10 @@ export class TokenMonitor {
         return result;
       }
 
-      // Get token transfer events for this address
+      // Get token transfer events involving this address (incoming or outgoing)
       const logs = await publicClient.getLogs({
         address: PTRADOOR_TOKEN_ADDRESS,
         event: TRANSFER_EVENT,
-        args: {
-          from: address as `0x${string}`,
-        },
         fromBlock: fromBlock || BigInt(profile.lastProcessedBlock || 0) + 1n,
         toBlock: toBlock || "latest",
       });
@@ -76,12 +73,16 @@ export class TokenMonitor {
           if (transaction) {
             result.processedTransactions++;
 
-            // Award points for the transaction
-            // Use minimal USD amount since we're monitoring existing transfers
+            // Determine trade type and USD amount from the transfer value
+            const isIncoming =
+              transaction.to.toLowerCase() === address.toLowerCase();
+            const type = isIncoming ? "buy" : "sell";
+            const usdAmount = await this.calculateUSDValue(transaction.value);
+
             const tradeResult = await TradingSystem.executeTrade({
               userAddress: address,
-              type: "buy", // Assume buy for incoming transfers
-              usdAmount: 1, // Default amount for monitoring existing transactions
+              type,
+              usdAmount,
               txHash: transaction.hash,
             });
 

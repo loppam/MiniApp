@@ -3,13 +3,15 @@ import {
   transactionService,
   achievementService,
 } from "./firebase-services";
+import { PriceService } from "./price-service";
 
 // pTradoor token contract address on Base
 const PTRADOOR_CONTRACT_ADDRESS = "0x41Ed0311640A5e489A90940b1c33433501a21B07";
 
 // Trading constants
-const BASE_POINTS_PER_TRADE = 5; // Base points for each trade
+const BASE_POINTS_PER_TRADE = 5; // Base points scaling factor for sqrt model
 const MINTING_MULTIPLIER = 3; // 3x points for users who have minted
+const MAX_POINTS_PER_TRADE = 1000; // Hard cap to prevent farming by whales
 const POINTS_PER_PTRADOOR_HOLD = 0.1; // per day
 const STREAK_BONUS_POINTS = 50; // weekly streak bonus
 
@@ -57,9 +59,8 @@ export class TradingSystem {
         profile.hasMinted ?? false
       );
 
-      // Calculate token amount based on current price (simplified)
-      // In production, you'd get this from a price oracle or DEX
-      const tokenAmount = this.calculateTokenAmount(usdAmount);
+      // Calculate token amount based on current price from Uniswap
+      const tokenAmount = await this.calculateTokenAmount(usdAmount);
 
       // Record the transaction
       const transactionId = await transactionService.addTransaction({
@@ -116,33 +117,37 @@ export class TradingSystem {
     }
   }
 
-  // Calculate points for a trade based on USD amount
+  // Calculate points for a trade based on USD amount with diminishing returns
   private static calculateTradePoints(
     usdAmount: number,
     hasMinted: boolean
   ): number {
-    // Base points scaled by trade amount (minimum 1 point per dollar)
-    let points = Math.max(
-      Math.floor(usdAmount * BASE_POINTS_PER_TRADE),
-      Math.floor(usdAmount)
-    );
+    const clampedUsd = Math.max(0, usdAmount);
+    // Diminishing returns: sqrt-based scaling to discourage large-volume farming
+    let points = Math.floor(BASE_POINTS_PER_TRADE * Math.sqrt(clampedUsd));
 
-    // Apply minting multiplier if user has minted
     if (hasMinted) {
       points *= MINTING_MULTIPLIER;
     }
 
+    // Apply hard cap
+    points = Math.min(points, MAX_POINTS_PER_TRADE);
     return points;
+  }
+
+  // Public estimator to show projected points for a USD amount
+  static estimatePointsForUsd(usdAmount: number, hasMinted: boolean): number {
+    return this.calculateTradePoints(usdAmount, hasMinted);
   }
 
   // Calculate token amount for USD trade
   // In production, this would fetch from a price oracle or DEX
-  private static calculateTokenAmount(usdAmount: number): number {
-    // Simplified calculation - in production you'd get real-time price
-    const currentPrice = 0.045; // $0.045 per token (example)
+  private static async calculateTokenAmount(
+    usdAmount: number
+  ): Promise<number> {
+    // Fetch dynamic price from Uniswap via PriceService
+    const currentPrice = await PriceService.getPTradoorPrice();
     const tokenAmount = usdAmount / currentPrice;
-
-    // Round to 2 decimal places for consistency
     return Math.round(tokenAmount * 100) / 100;
   }
 

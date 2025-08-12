@@ -16,7 +16,7 @@ import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { useUserProfile, useTransactions } from "~/hooks/useFirebase";
 import { Timestamp } from "firebase/firestore";
 import { useState, useCallback } from "react";
-import { TradingSystem } from "~/lib/trading-system";
+// import { TradingSystem } from "~/lib/trading-system";p
 import { PriceService } from "~/lib/price-service";
 
 // Import Farcaster mini app SDK
@@ -82,8 +82,9 @@ export function RankUpTransactions() {
     pointsEarned?: number;
   }>({ status: "idle" });
 
-  // Fixed trade amount (exact $1)
-  const tradeAmount = 1;
+  // Use a minimal default to open wallet; actual points will be derived from on-chain volume
+  // Deprecated: previously used for pre-filled USD; left as a note
+  // const tradeAmount = 1;
 
   const { isLoading: isConfirming } = useWaitForTransactionReceipt({
     hash: tradeState.hash as `0x${string}`,
@@ -114,7 +115,7 @@ export function RankUpTransactions() {
       });
 
       try {
-        console.log(`Executing dynamic $${tradeAmount} ${type} trade`);
+        console.log(`Executing ${type} trade via wallet swap`);
 
         // Ensure we are in a Farcaster environment capable of showing the wallet swap
         try {
@@ -154,36 +155,20 @@ export function RankUpTransactions() {
         let swapResult;
 
         if (type === "buy") {
-          // Buy: ETH → pTradoor
-          // Calculate ETH amount for trade USD amount
-          const ethAmountForTrade = tradeAmount / priceData.ethPrice;
-          const ethAmountInWei = Math.floor(
-            ethAmountForTrade * 1e18
-          ).toString();
-
           swapResult = await sdk.actions.swapToken({
             sellToken: "eip155:8453/slip44:60", // Native ETH on Base
             buyToken:
               "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
-            sellAmount: ethAmountInWei, // ETH amount worth trade USD amount
+            sellAmount: undefined as unknown as string, // Let wallet decide
           });
         } else {
           // Sell: pTradoor → ETH
-          // Calculate the amount of pTradoor tokens that equals trade USD amount
-          const tokenAmountForTrade = tradeAmount / priceData.pTradoorPrice;
-          const tokenAmountInWei = Math.floor(
-            tokenAmountForTrade * 1e18
-          ).toString();
-
-          console.log(
-            `Selling ${tokenAmountForTrade} pTradoor tokens (worth $${tradeAmount})`
-          );
 
           swapResult = await sdk.actions.swapToken({
             sellToken:
               "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
             buyToken: "eip155:8453/slip44:60", // Native ETH on Base
-            sellAmount: tokenAmountInWei, // Amount of pTradoor tokens worth trade USD amount
+            sellAmount: undefined as unknown as string, // Let wallet decide
           });
         }
 
@@ -200,31 +185,25 @@ export function RankUpTransactions() {
           return;
         }
 
-        // Only proceed with trading system if swap was successful
-        const tradingResult = await TradingSystem.executeTrade({
-          userAddress: address,
-          type,
-          usdAmount: tradeAmount,
-          txHash: "farcaster_swap", // Use placeholder since SDK doesn't provide txHash
-        });
+        // After swap, trigger server monitor to compute points from actual transfer volume
+        try {
+          const resp = await fetch("/api/token-monitor", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ action: "monitor_address", address }),
+          });
+          const data = await resp.json();
+          const awarded = data?.result?.newPointsAwarded ?? 0;
 
-        if (tradingResult.success) {
           setTradeState({
             status: "success",
             type,
-            hash: "farcaster_swap", // Use placeholder since SDK doesn't provide txHash
-            pointsEarned: tradingResult.pointsEarned,
+            hash: "farcaster_swap",
+            pointsEarned: awarded,
           });
-
-          console.log(
-            `Trade completed! Earned ${tradingResult.pointsEarned} points`
-          );
-        } else {
-          setTradeState({
-            status: "error",
-            type,
-            error: tradingResult.error || "Trade processing failed",
-          });
+        } catch (awardErr) {
+          console.warn("Awarding via monitor failed:", awardErr);
+          setTradeState({ status: "success", type, hash: "farcaster_swap" });
         }
       } catch (error) {
         console.error(`${type} trade failed:`, error);
@@ -235,7 +214,7 @@ export function RankUpTransactions() {
         });
       }
     },
-    [address, isConnected, tradeAmount]
+    [address, isConnected]
   );
 
   const handleBuy = useCallback(() => {
@@ -416,9 +395,7 @@ export function RankUpTransactions() {
                 <h4 className="text-sm font-medium text-green-500">Buy</h4>
                 <ArrowUpRight className="h-3 w-3 text-green-500" />
               </div>
-              <p className="text-xs text-muted-foreground mb-2">
-                ${tradeAmount.toFixed(2)} → pTRADOOR
-              </p>
+              <p className="text-xs text-muted-foreground mb-2">Buy pTRADOOR</p>
               <Button
                 size="sm"
                 className="w-full bg-green-600 hover:bg-green-700 text-white text-xs"
@@ -454,7 +431,7 @@ export function RankUpTransactions() {
                 <ArrowUpRight className="h-3 w-3 text-red-500" />
               </div>
               <p className="text-xs text-muted-foreground mb-2">
-                pTRADOOR → ${tradeAmount.toFixed(2)}
+                Sell pTRADOOR
               </p>
               <Button
                 size="sm"
@@ -489,8 +466,8 @@ export function RankUpTransactions() {
           </div>
 
           <div className="text-center text-xs text-muted-foreground">
-            ${tradeAmount.toFixed(2)} trade earns {profile?.hasMinted ? 15 : 5}{" "}
-            points
+            Points are based on actual trade volume with diminishing returns and
+            a 1,000 cap.
             {profile?.hasMinted && (
               <span className="text-green-500 ml-1">
                 (3x multiplier active)

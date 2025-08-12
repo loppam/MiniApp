@@ -139,15 +139,18 @@ export const userService = {
         await setDoc(userRef, newProfile, { merge: true });
         console.log("User profile created/updated successfully");
 
-        // Update platform stats to increment totalUsers
+        // Update platform stats atomically to avoid race conditions
         try {
-          const currentStats = await platformStatsService.ensurePlatformStats();
-          await platformStatsService.updatePlatformStats({
-            totalUsers: currentStats.totalUsers + 1,
-            totalPoints: currentStats.totalPoints + initialPoints.points,
+          // Ensure stats doc exists
+          await platformStatsService.ensurePlatformStats();
+          // Atomic increments
+          await updateDoc(doc(db, "platformStats", "current"), {
+            totalUsers: increment(1),
+            totalPoints: increment(initialPoints.points),
+            lastUpdated: serverTimestamp(),
           });
           console.log(
-            "Platform stats updated - totalUsers incremented, totalPoints incremented by",
+            "Platform stats updated atomically: +1 user, +points",
             initialPoints.points
           );
         } catch (statsError) {
@@ -773,10 +776,14 @@ export const platformStatsService = {
   async updatePlatformStats(stats: Partial<PlatformStats>): Promise<void> {
     try {
       console.log("📊 Updating platform stats:", stats);
-      await setDoc(doc(db, "platformStats", "current"), {
-        ...stats,
-        lastUpdated: serverTimestamp(),
-      });
+      await setDoc(
+        doc(db, "platformStats", "current"),
+        {
+          ...stats,
+          lastUpdated: serverTimestamp(),
+        },
+        { merge: true }
+      );
       console.log("Platform stats updated successfully");
     } catch (error) {
       console.error("Error updating platform stats:", error);

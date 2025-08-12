@@ -226,7 +226,7 @@ export function usePlatformStats() {
       clearTimeout(timeout);
       unsubscribe();
     };
-  }, []);
+  }, [loading, error]);
 
   return {
     stats,
