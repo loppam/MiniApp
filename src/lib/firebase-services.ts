@@ -776,10 +776,23 @@ export const platformStatsService = {
   async updatePlatformStats(stats: Partial<PlatformStats>): Promise<void> {
     try {
       console.log("📊 Updating platform stats:", stats);
+      const current = await this.ensurePlatformStats();
+      const safeStats: Partial<PlatformStats> = { ...current };
+      if (typeof stats.totalUsers === "number")
+        safeStats.totalUsers = stats.totalUsers;
+      if (typeof stats.totalTransactions === "number")
+        safeStats.totalTransactions = stats.totalTransactions;
+      if (typeof stats.totalPoints === "number" && isFinite(stats.totalPoints))
+        safeStats.totalPoints = stats.totalPoints;
+      if (typeof stats.ptradoorSupply === "number")
+        safeStats.ptradoorSupply = stats.ptradoorSupply;
+      if (typeof stats.ptradoorCirculating === "number")
+        safeStats.ptradoorCirculating = stats.ptradoorCirculating;
+
       await setDoc(
         doc(db, "platformStats", "current"),
         {
-          ...stats,
+          ...safeStats,
           lastUpdated: serverTimestamp(),
         },
         { merge: true }
