@@ -21,8 +21,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
         type: "launch_frame",
         name: "Tradoor",
         url: `${appUrl}/frames/hello/${name}/`,
-        splashImageUrl: `${appUrl}/splash.png`,
-        splashBackgroundColor: "#f7f7f7",
+        splashImageUrl: `${appUrl}/tradoor.png`,
+        splashBackgroundColor: "#000000",
       },
     },
   };

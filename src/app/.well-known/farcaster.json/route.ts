@@ -12,12 +12,12 @@ export async function GET() {
     frame: {
       version: "1",
       name: "Tradoor",
-      iconUrl: `${appUrl}/icon.png`,
+      iconUrl: `${appUrl}/tradoor.png`,
       homeUrl: appUrl,
       imageUrl: `${appUrl}/frames/hello/opengraph-image`,
       buttonTitle: "Launch App",
-      splashImageUrl: `${appUrl}/splash.png`,
-      splashBackgroundColor: "#f7f7f7",
+      splashImageUrl: `${appUrl}/tradoor.png`,
+      splashBackgroundColor: "#000000",
       webhookUrl: `${appUrl}/api/webhook`,
     },
   };

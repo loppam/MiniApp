@@ -11,8 +11,8 @@ const frame = {
       type: "launch_frame",
       name: "Swap & Send Demo",
       url: `${appUrl}/swaps`,
-      splashImageUrl: `${appUrl}/splash.png`,
-      splashBackgroundColor: "#f7f7f7",
+      splashImageUrl: `${appUrl}/tradoor.png`,
+      splashBackgroundColor: "#000000",
     },
   },
 };
