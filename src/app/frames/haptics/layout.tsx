@@ -9,7 +9,7 @@ const frame = {
     action: {
       type: "launch_frame",
       name: "Farcaster Haptics Demo",
-      splashImageUrl: `https://frames-v2.vercel.app/splash.png`,
+      splashImageUrl: `https://mini-app-nine-ruddy.vercel.app/tradoor.png`,
       splashBackgroundColor: "#f7f7f7",
     },
   },
