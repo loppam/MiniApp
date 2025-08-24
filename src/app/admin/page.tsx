@@ -411,6 +411,52 @@ export default function AdminPage() {
     }
   };
 
+  const handleFixIncorrectInitialData = async () => {
+    try {
+      console.log("Fixing users with incorrect initial data...");
+      setMessage({
+        type: "info",
+        text: "Fixing users with incorrect initial data...",
+      });
+
+      const { userService } = await import("~/lib/firebase-services");
+      const result = await userService.fixUsersWithIncorrectInitialData();
+
+      console.log("Fix result:", result);
+
+      if (result.fixedUsers > 0) {
+        setMessage({
+          type: "success",
+          text: `Fixed ${result.fixedUsers} users with incorrect initial data!`,
+        });
+
+        // Reload data to show updated information
+        await loadData();
+      } else {
+        setMessage({
+          type: "success",
+          text: "No users needed fixing. All data is correct!",
+        });
+      }
+
+      if (result.errors.length > 0) {
+        console.warn("Some errors occurred during fixing:", result.errors);
+      }
+
+      // Clear message after 5 seconds
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error) {
+      console.error("Error fixing incorrect initial data:", error);
+      setMessage({
+        type: "error",
+        text: `Error fixing incorrect initial data: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
   const handleRefreshPerformanceMetrics = async () => {
     try {
       console.log("Getting performance metrics...");
@@ -1269,6 +1315,14 @@ export default function AdminPage() {
                 >
                   <Target className="h-4 w-4" />
                   Diagnose Leaderboard
+                </Button>
+                <Button
+                  onClick={handleFixIncorrectInitialData}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Users className="h-4 w-4" />
+                  Fix Initial Data
                 </Button>
               </div>
             </div>
