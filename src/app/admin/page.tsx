@@ -34,6 +34,7 @@ import {
   Trash2,
   Lock,
   Unlock,
+  Clock,
 } from "lucide-react";
 import {
   achievementService,
@@ -61,6 +62,18 @@ export default function AdminPage() {
   const [platformStats, setPlatformStats] = useState<PlatformStats | null>(
     null
   );
+  const [performanceMetrics, setPerformanceMetrics] = useState<{
+    responseTime: number;
+    lastUpdateDelay: number;
+    dataFreshness: number;
+    dataSize: number;
+  } | null>(null);
+
+  // Message states
+  const [message, setMessage] = useState<{
+    type: "success" | "error" | "info";
+    text: string;
+  } | null>(null);
 
   // Form states
   const [newAchievement, setNewAchievement] = useState({
@@ -116,6 +129,14 @@ export default function AdminPage() {
       setAchievements(achievementsData);
       setMilestones(milestonesData);
       setPlatformStats(statsData);
+
+      // Also load performance metrics
+      try {
+        const metrics = await platformStatsService.getPerformanceMetrics();
+        setPerformanceMetrics(metrics);
+      } catch (metricsError) {
+        console.warn("Could not load performance metrics:", metricsError);
+      }
     } catch (error) {
       console.error("Error loading admin data:", error);
     }
@@ -123,6 +144,8 @@ export default function AdminPage() {
 
   const handleCreateAchievement = async () => {
     try {
+      setMessage({ type: "info", text: "Creating achievement..." });
+
       const achievementData = {
         name: newAchievement.name,
         description: newAchievement.description,
@@ -150,13 +173,28 @@ export default function AdminPage() {
         pointsReward: 10,
         isActive: true,
       });
+
+      setMessage({
+        type: "success",
+        text: "Achievement created successfully!",
+      });
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error("Error creating achievement:", error);
+      setMessage({
+        type: "error",
+        text: `Error creating achievement: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+      setTimeout(() => setMessage(null), 5000);
     }
   };
 
   const handleCreateMilestone = async () => {
     try {
+      setMessage({ type: "info", text: "Creating milestone..." });
+
       const milestoneData = {
         name: newMilestone.name,
         target: newMilestone.target,
@@ -174,8 +212,18 @@ export default function AdminPage() {
         target: 100,
         type: "users",
       });
+
+      setMessage({ type: "success", text: "Milestone created successfully!" });
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error("Error creating milestone:", error);
+      setMessage({
+        type: "error",
+        text: `Error creating milestone: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+      setTimeout(() => setMessage(null), 5000);
     }
   };
 
@@ -218,11 +266,41 @@ export default function AdminPage() {
   const handleRecalculatePlatformStats = async () => {
     try {
       console.log("Recalculating platform stats...");
+      setMessage({ type: "info", text: "Recalculating platform stats..." });
+
       await platformStatsService.recalculatePlatformStats();
       await loadData(); // Reload data to show updated stats
+
+      setMessage({
+        type: "success",
+        text: "Platform stats recalculated successfully!",
+      });
       console.log("Platform stats recalculated successfully");
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
     } catch (error) {
       console.error("Error recalculating platform stats:", error);
+      setMessage({
+        type: "error",
+        text: `Error recalculating stats: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+
+      // Clear error message after 5 seconds
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
+  const handleRefreshPerformanceMetrics = async () => {
+    try {
+      console.log("Getting performance metrics...");
+      const metrics = await platformStatsService.getPerformanceMetrics();
+      console.log("Performance metrics:", metrics);
+      setPerformanceMetrics(metrics);
+    } catch (error) {
+      console.error("Error getting performance metrics:", error);
     }
   };
 
@@ -327,6 +405,30 @@ export default function AdminPage() {
 
           {/* Achievements Tab */}
           <TabsContent value="achievements" className="space-y-6">
+            {/* Message Display */}
+            {message && (
+              <Alert
+                className={
+                  message.type === "error"
+                    ? "border-red-500 bg-red-50"
+                    : message.type === "success"
+                    ? "border-green-500 bg-green-50"
+                    : "border-blue-500 bg-blue-50"
+                }
+              >
+                <AlertDescription
+                  className={
+                    message.type === "error"
+                      ? "text-red-700"
+                      : message.type === "success"
+                      ? "text-green-700"
+                      : "text-blue-700"
+                  }
+                >
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Achievements Management</h2>
               <Dialog>
@@ -603,6 +705,30 @@ export default function AdminPage() {
 
           {/* Milestones Tab */}
           <TabsContent value="milestones" className="space-y-6">
+            {/* Message Display */}
+            {message && (
+              <Alert
+                className={
+                  message.type === "error"
+                    ? "border-red-500 bg-red-50"
+                    : message.type === "success"
+                    ? "text-green-500 bg-green-50"
+                    : "border-blue-500 bg-blue-50"
+                }
+              >
+                <AlertDescription
+                  className={
+                    message.type === "error"
+                      ? "text-red-700"
+                      : message.type === "success"
+                      ? "text-green-700"
+                      : "text-blue-700"
+                  }
+                >
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
             <div className="flex items-center justify-between">
               <h2 className="text-xl font-semibold">Milestones Management</h2>
               <Dialog>
@@ -730,86 +856,235 @@ export default function AdminPage() {
           <TabsContent value="platform" className="space-y-6">
             <h2 className="text-xl font-semibold">Platform Statistics</h2>
 
+            {/* Message Display */}
+            {message && (
+              <Alert
+                className={
+                  message.type === "error"
+                    ? "border-red-500 bg-red-50"
+                    : message.type === "success"
+                    ? "border-green-500 bg-green-50"
+                    : "border-blue-500 bg-blue-50"
+                }
+              >
+                <AlertDescription
+                  className={
+                    message.type === "error"
+                      ? "text-red-700"
+                      : message.type === "success"
+                      ? "text-green-700"
+                      : "text-blue-700"
+                  }
+                >
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
+
             {platformStats && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Users className="h-5 w-5 text-blue-500" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Total Users
-                        </p>
-                        <p className="text-2xl font-bold">
-                          {platformStats?.totalUsers
-                            ? platformStats.totalUsers.toLocaleString()
-                            : "0"}
-                        </p>
+              <div className="space-y-6">
+                {/* Current Stats Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-blue-500" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Total Users
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {platformStats?.totalUsers
+                              ? platformStats.totalUsers.toLocaleString()
+                              : "0"}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <TrendingUp className="h-5 w-5 text-green-500" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Total Transactions
-                        </p>
-                        <p className="text-2xl font-bold">
-                          {platformStats?.totalTransactions
-                            ? platformStats.totalTransactions.toLocaleString()
-                            : "0"}
-                        </p>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-green-500" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Total Transactions
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {platformStats?.totalTransactions
+                              ? platformStats.totalTransactions.toLocaleString()
+                              : "0"}
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Trophy className="h-5 w-5 text-yellow-500" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          Total Points
-                        </p>
-                        <p className="text-2xl font-bold">
-                          {platformStats?.totalPoints
-                            ? (platformStats.totalPoints / 1000).toFixed(1)
-                            : "0.0"}
-                          K
-                        </p>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Trophy className="h-5 w-5 text-yellow-500" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Total Points
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {platformStats?.totalPoints
+                              ? (platformStats.totalPoints / 1000).toFixed(1)
+                              : "0.0"}
+                            K
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
 
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <Target className="h-5 w-5 text-purple-500" />
-                      <div>
-                        <p className="text-sm text-muted-foreground">
-                          pTradoor Supply
-                        </p>
-                        <p className="text-2xl font-bold">
-                          {platformStats?.ptradoorSupply
-                            ? (platformStats.ptradoorSupply / 1000).toFixed(1)
-                            : "0.0"}
-                          K
-                        </p>
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Target className="h-5 w-5 text-purple-500" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            pTradoor Supply
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {platformStats?.ptradoorSupply
+                              ? (platformStats.ptradoorSupply / 1000).toFixed(1)
+                              : "0.0"}
+                            K
+                          </p>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                </div>
+
+                {/* Additional Metrics */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <TrendingUp className="h-5 w-5 text-green-500" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Avg Points/User
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {platformStats.totalUsers > 0
+                              ? (
+                                  platformStats.totalPoints /
+                                  platformStats.totalUsers
+                                ).toFixed(1)
+                              : "0.0"}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Users className="h-5 w-5 text-blue-500" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Circulation %
+                          </p>
+                          <p className="text-2xl font-bold">
+                            {platformStats.ptradoorSupply > 0
+                              ? (
+                                  (platformStats.ptradoorCirculating /
+                                    platformStats.ptradoorSupply) *
+                                  100
+                                ).toFixed(1)
+                              : "0.0"}
+                            %
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-5 w-5 text-gray-500" />
+                        <div>
+                          <p className="text-sm text-muted-foreground">
+                            Last Updated
+                          </p>
+                          <p className="text-sm font-medium">
+                            {platformStats.lastUpdated
+                              ?.toDate()
+                              .toLocaleString() || "Never"}
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                </div>
               </div>
             )}
-            <Button onClick={handleRecalculatePlatformStats} className="w-full">
-              Recalculate Platform Stats
-            </Button>
+
+            <div className="flex gap-2">
+              <Button
+                onClick={handleRecalculatePlatformStats}
+                className="flex-1"
+              >
+                Recalculate Platform Stats
+              </Button>
+              <Button
+                onClick={handleRefreshPerformanceMetrics}
+                variant="outline"
+                className="flex-1"
+              >
+                Refresh Performance Metrics
+              </Button>
+            </div>
+
+            {/* Performance Metrics Display */}
+            {performanceMetrics && (
+              <div className="mt-6">
+                <h3 className="text-lg font-semibold mb-2">
+                  Performance Metrics
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Response Time (ms)
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {performanceMetrics.responseTime.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Last Update Delay (ms)
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {performanceMetrics.lastUpdateDelay.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Data Freshness (ms)
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {performanceMetrics.dataFreshness.toFixed(2)}
+                    </p>
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">
+                      Data Size (KB)
+                    </p>
+                    <p className="text-2xl font-bold">
+                      {performanceMetrics.dataSize.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Overview Tab */}

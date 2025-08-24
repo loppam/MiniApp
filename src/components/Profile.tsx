@@ -127,7 +127,7 @@ Join me on Base chain's premier trading platform! 🚀
       <div className="text-center py-4">
         <div className="text-sm text-muted-foreground">No profile found</div>
         <div className="text-xs text-muted-foreground mt-1">
-          Connect your wallet to view your profile
+          Open in Warpcast
         </div>
       </div>
     );

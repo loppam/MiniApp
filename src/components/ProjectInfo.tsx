@@ -1,8 +1,7 @@
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card";
 import { Badge } from "~/components/ui/badge";
-import { Button } from "~/components/ui/Button";
 import { Progress } from "~/components/ui/progress";
-import { Users, TrendingUp, Target, ExternalLink, Check } from "lucide-react";
+import { Users, TrendingUp, Target, Check } from "lucide-react";
 import { useAccount } from "wagmi";
 import {
   usePlatformStats,
@@ -252,12 +251,7 @@ export function ProjectInfo({
       </Card>
 
       <div className="text-center">
-        {!isConnected ? (
-          <Button className="w-full bg-blue-600 hover:bg-blue-700 text-white">
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Connect Wallet to Start
-          </Button>
-        ) : (
+        {!isConnected ? null : (
           <div className="p-3 rounded-lg bg-green-500/10 border border-green-500/20">
             <div className="flex items-center justify-center gap-2 text-green-600">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>

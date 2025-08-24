@@ -776,8 +776,40 @@ export const platformStatsService = {
   async updatePlatformStats(stats: Partial<PlatformStats>): Promise<void> {
     try {
       console.log("📊 Updating platform stats:", stats);
+
+      // Validate data before updating
+      if (stats.totalUsers !== undefined && stats.totalUsers < 0) {
+        throw new Error("Total users cannot be negative");
+      }
+      if (
+        stats.totalTransactions !== undefined &&
+        stats.totalTransactions < 0
+      ) {
+        throw new Error("Total transactions cannot be negative");
+      }
+      if (stats.totalPoints !== undefined && stats.totalPoints < 0) {
+        throw new Error("Total points cannot be negative");
+      }
+      if (stats.ptradoorSupply !== undefined && stats.ptradoorSupply < 0) {
+        throw new Error("pTradoor supply cannot be negative");
+      }
+      if (
+        stats.ptradoorCirculating !== undefined &&
+        stats.ptradoorCirculating < 0
+      ) {
+        throw new Error("pTradoor circulating cannot be negative");
+      }
+      if (
+        stats.ptradoorCirculating !== undefined &&
+        stats.ptradoorSupply !== undefined &&
+        stats.ptradoorCirculating > stats.ptradoorSupply
+      ) {
+        throw new Error("Circulating supply cannot exceed total supply");
+      }
+
       const current = await this.ensurePlatformStats();
       const safeStats: Partial<PlatformStats> = { ...current };
+
       if (typeof stats.totalUsers === "number")
         safeStats.totalUsers = stats.totalUsers;
       if (typeof stats.totalTransactions === "number")
@@ -800,6 +832,7 @@ export const platformStatsService = {
       console.log("Platform stats updated successfully");
     } catch (error) {
       console.error("Error updating platform stats:", error);
+      throw error; // Re-throw to let caller handle it
     }
   },
 
@@ -842,6 +875,44 @@ export const platformStatsService = {
       console.log("Platform stats recalculated successfully");
     } catch (error) {
       console.error("Error recalculating platform stats:", error);
+    }
+  },
+
+  // Get performance metrics for monitoring
+  async getPerformanceMetrics(): Promise<{
+    responseTime: number;
+    lastUpdateDelay: number;
+    dataFreshness: number;
+    dataSize: number;
+  }> {
+    try {
+      const start = Date.now();
+      const stats = await this.getPlatformStats();
+      const responseTime = Date.now() - start;
+
+      const lastUpdateDelay = stats?.lastUpdated
+        ? Date.now() - stats.lastUpdated.toMillis()
+        : Infinity;
+
+      const dataFreshness = Math.max(0, 300000 - lastUpdateDelay); // 5 min threshold
+
+      // Calculate data size (rough estimate)
+      const dataSize = stats ? JSON.stringify(stats).length : 0;
+
+      return {
+        responseTime,
+        lastUpdateDelay,
+        dataFreshness,
+        dataSize,
+      };
+    } catch (error) {
+      console.error("Error getting performance metrics:", error);
+      return {
+        responseTime: -1,
+        lastUpdateDelay: -1,
+        dataFreshness: -1,
+        dataSize: -1,
+      };
     }
   },
 };

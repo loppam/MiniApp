@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { sdk } from "@farcaster/miniapp-sdk";
 import {
   UserProfile,
   Transaction,
@@ -19,6 +20,7 @@ export function useUserProfile(address: string | undefined) {
   const [profile, setProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const hasAttemptedInitRef = useRef(false);
 
   useEffect(() => {
     if (!address) {
@@ -35,8 +37,33 @@ export function useUserProfile(address: string | undefined) {
     // Set up real-time listener for profile updates
     const unsubscribe = createRealtimeListeners.onUserProfileChange(
       address,
-      (userProfile: UserProfile | null) => {
+      async (userProfile: UserProfile | null) => {
         console.log("Profile updated:", userProfile);
+
+        // If profile missing, attempt one-time optimistic creation using Farcaster context
+        if (!userProfile && !hasAttemptedInitRef.current) {
+          try {
+            hasAttemptedInitRef.current = true;
+            const ctx = await sdk.context;
+            await userService.upsertUserProfile(
+              address,
+              {},
+              {
+                user: {
+                  fid: ctx?.user?.fid,
+                  username: ctx?.user?.username,
+                  displayName: ctx?.user?.displayName,
+                  pfpUrl: ctx?.user?.pfpUrl,
+                },
+              }
+            );
+            // Keep loading until the next snapshot delivers the created profile
+            return;
+          } catch (e) {
+            console.error("Optimistic profile creation failed:", e);
+          }
+        }
+
         setProfile(userProfile);
         setLoading(false);
       }
@@ -159,6 +186,7 @@ export function usePlatformStats() {
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const didReceiveRealtimeUpdateRef = useRef(false);
 
   useEffect(() => {
     console.log("🔄 usePlatformStats: Starting to load platform stats");
@@ -194,6 +222,7 @@ export function usePlatformStats() {
           "🔄 usePlatformStats: Platform stats updated:",
           platformStats
         );
+        didReceiveRealtimeUpdateRef.current = true;
         setStats(platformStats);
         setLoading(false);
       }
@@ -201,23 +230,22 @@ export function usePlatformStats() {
 
     // Add a timeout to ensure we don't stay loading forever
     const timeout = setTimeout(async () => {
-      if (loading) {
-        console.log(
-          "🔄 usePlatformStats: Timeout reached, trying manual fetch..."
+      if (didReceiveRealtimeUpdateRef.current) return;
+      console.log(
+        "🔄 usePlatformStats: Timeout reached, trying manual fetch..."
+      );
+      try {
+        const { platformStatsService } = await import(
+          "~/lib/firebase-services"
         );
-        try {
-          const { platformStatsService } = await import(
-            "~/lib/firebase-services"
-          );
-          const manualStats = await platformStatsService.getPlatformStats();
-          console.log("🔄 usePlatformStats: Manual fetch result:", manualStats);
-          setStats(manualStats);
-          setLoading(false);
-        } catch (error) {
-          console.error("🔄 usePlatformStats: Manual fetch failed:", error);
-          setLoading(false);
-          setError("Failed to load platform stats");
-        }
+        const manualStats = await platformStatsService.getPlatformStats();
+        console.log("🔄 usePlatformStats: Manual fetch result:", manualStats);
+        setStats(manualStats);
+        setLoading(false);
+      } catch (error) {
+        console.error("🔄 usePlatformStats: Manual fetch failed:", error);
+        setLoading(false);
+        setError("Failed to load platform stats");
       }
     }, 10000); // 10 second timeout
 

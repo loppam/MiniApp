@@ -6,11 +6,11 @@ import { Leaderboard } from "./Leaderboard";
 import { RankUpTransactions } from "./RankUpTransactions";
 import { Profile } from "./Profile";
 import { Badge } from "./ui/badge";
-import { Button } from "./ui/Button";
+// import { Button } from "./ui/Button";
 import { Home, TrendingUp, User, Zap, Trophy } from "lucide-react";
 import sdk, { type Context, AddMiniApp } from "@farcaster/miniapp-sdk";
-import { useAccount, useConnect, useDisconnect } from "wagmi";
-import { config } from "~/components/providers/WagmiProvider";
+import { useAccount } from "wagmi";
+// import { config } from "~/components/providers/WagmiProvider";
 import { truncateAddress } from "~/lib/truncateAddress";
 import { useUserProfile } from "~/hooks/useFirebase";
 
@@ -23,8 +23,6 @@ export default function TradoorApp(
   const [isFrameAdded, setIsFrameAdded] = useState(false);
 
   const { address, isConnected } = useAccount();
-  const { connect } = useConnect();
-  const { disconnect } = useDisconnect();
 
   // Firebase hooks
   const { profile: userProfile } = useUserProfile(address);
@@ -167,13 +165,7 @@ export default function TradoorApp(
     { id: "profile", label: "Profile", icon: User },
   ];
 
-  const handleConnectWallet = useCallback(() => {
-    if (isConnected) {
-      disconnect();
-    } else {
-      connect({ connector: config.connectors[0] });
-    }
-  }, [isConnected, connect, disconnect]);
+  // No manual connect wallet inside Warpcast; rely on Farcaster context
 
   // Remove handleTestConnection and related debug button
 
@@ -262,27 +254,7 @@ export default function TradoorApp(
         </div>
       </nav>
 
-      {/* Wallet Connection Overlay */}
-      {!isConnected && (
-        <div className="fixed inset-0 z-50 bg-background/80 backdrop-blur flex items-center justify-center">
-          <div className="bg-card border border-border rounded-lg p-6 mx-4 max-w-sm w-full">
-            <div className="text-center space-y-4">
-              <Zap className="h-12 w-12 text-blue-500 mx-auto" />
-              <h2 className="text-xl font-bold">Connect Wallet</h2>
-              <p className="text-sm text-muted-foreground">
-                Connect your wallet to start trading and earning points on
-                Tradoor
-              </p>
-              <Button
-                onClick={handleConnectWallet}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              >
-                Connect Wallet
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* No wallet modal in Warpcast; show UI based on Farcaster context */}
     </div>
   );
 }

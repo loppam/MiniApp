@@ -155,21 +155,106 @@ export function RankUpTransactions() {
         let swapResult;
 
         if (type === "buy") {
+          console.log("Setting up BUY swap: ETH → pTradoor");
+          console.log("Sell token (ETH):", "eip155:8453/slip44:60");
+          console.log(
+            "Buy token (pTradoor):",
+            "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07"
+          );
+
+          // Validate token addresses before swap
+          const ethAddress = "eip155:8453/slip44:60";
+          const pTradoorAddress =
+            "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07";
+
+          if (!ethAddress || !pTradoorAddress) {
+            throw new Error("Invalid token addresses for buy swap");
+          }
+
           swapResult = await sdk.actions.swapToken({
-            sellToken: "eip155:8453/slip44:60", // Native ETH on Base
-            buyToken:
-              "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
+            sellToken: ethAddress, // Native ETH on Base
+            buyToken: pTradoorAddress, // pTradoor
             sellAmount: undefined as unknown as string, // Let wallet decide
           });
         } else {
           // Sell: pTradoor → ETH
+          console.log("Setting up SELL swap: pTradoor → ETH");
+          console.log(
+            "Sell token (pTradoor):",
+            "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07"
+          );
+          console.log("Buy token (ETH):", "eip155:8453/slip44:60");
 
-          swapResult = await sdk.actions.swapToken({
-            sellToken:
-              "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
-            buyToken: "eip155:8453/slip44:60", // Native ETH on Base
-            sellAmount: undefined as unknown as string, // Let wallet decide
-          });
+          // Validate token addresses before swap
+          const pTradoorAddress =
+            "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07";
+          const ethAddress = "eip155:8453/slip44:60";
+
+          if (!pTradoorAddress || !ethAddress) {
+            throw new Error("Invalid token addresses for swap");
+          }
+
+          // Try different token format variations for better compatibility
+          const tokenFormats = [
+            { sell: pTradoorAddress, buy: ethAddress },
+            {
+              sell: pTradoorAddress,
+              buy: "eip155:8453/erc20:0x4200000000000000000000000000000000000006",
+            }, // WETH on Base
+            {
+              sell: pTradoorAddress,
+              buy: "eip155:8453/erc20:0x0000000000000000000000000000000000000000",
+            }, // Alternative ETH format
+          ];
+
+          let lastError: Error | null = null;
+
+          for (const format of tokenFormats) {
+            try {
+              console.log(`Trying swap format: ${format.sell} → ${format.buy}`);
+              swapResult = await sdk.actions.swapToken({
+                sellToken: format.sell, // pTradoor
+                buyToken: format.buy, // ETH variant
+                sellAmount: undefined as unknown as string, // Let wallet decide
+              });
+
+              console.log("Swap succeeded with format:", format);
+              break; // Exit loop if successful
+            } catch (formatError) {
+              console.error(
+                `Format ${format.sell} → ${format.buy} failed:`,
+                formatError
+              );
+              lastError = formatError as Error;
+              continue; // Try next format
+            }
+          }
+
+          // If all formats failed, try fallback method
+          if (!swapResult) {
+            console.log("All swap formats failed, attempting fallback...");
+            try {
+              await PriceService.openSwapFormWithFallback(
+                pTradoorAddress, // pTradoor as sell token
+                ethAddress, // ETH as buy token
+                "1000000000000000000" // 1 pTradoor (18 decimals) as default amount
+              );
+
+              // If fallback succeeds, set a success state
+              swapResult = { success: true, method: "fallback" };
+            } catch (fallbackError) {
+              console.error("Fallback swap method also failed:", fallbackError);
+              throw new Error(
+                `All swap methods failed. Last error: ${
+                  lastError?.message || "Unknown error"
+                }. Fallback also failed: ${
+                  fallbackError instanceof Error
+                    ? fallbackError.message
+                    : "Unknown error"
+                }`
+              );
+            }
+          }
         }
 
         console.log("Farcaster swap result:", swapResult);
@@ -218,12 +303,18 @@ export function RankUpTransactions() {
   );
 
   const handleBuy = useCallback(() => {
+    console.log("Buy button clicked - initiating buy transaction");
+    console.log("Current address:", address);
+    console.log("Is connected:", isConnected);
     handleDynamicTrade("buy");
-  }, [handleDynamicTrade]);
+  }, [handleDynamicTrade, address, isConnected]);
 
   const handleSell = useCallback(() => {
+    console.log("Sell button clicked - initiating sell transaction");
+    console.log("Current address:", address);
+    console.log("Is connected:", isConnected);
     handleDynamicTrade("sell");
-  }, [handleDynamicTrade]);
+  }, [handleDynamicTrade, address, isConnected]);
 
   if (profileLoading || txLoading) {
     return (
@@ -516,11 +607,7 @@ export function RankUpTransactions() {
                     )}
                     <div>
                       <div className="font-medium">
-                        {transaction.type.toUpperCase()}{" "}
-                        {transaction.amount
-                          ? transaction.amount.toLocaleString()
-                          : "0"}{" "}
-                        pTRADOOR
+                        {transaction.type.toUpperCase()} pTRADOOR
                       </div>
                       <div className="text-sm text-muted-foreground">
                         ${transaction.price || 0} •{" "}

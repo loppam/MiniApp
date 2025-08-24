@@ -154,12 +154,7 @@ export function TokenPriceDisplay({
               {formatPrice(priceData.pTradoorPrice)}
             </div>
             {showDetails && (
-              <div className="text-xs text-gray-500">
-                Source:{" "}
-                {priceData.source === "farcaster_wallet"
-                  ? "Farcaster Wallet"
-                  : priceData.source}
-              </div>
+              <div className="text-xs text-gray-500">Source: CoinGecko</div>
             )}
           </div>
         </div>
@@ -190,22 +185,41 @@ export function TokenPriceDisplay({
         </button>
 
         {farcasterConnected && (
-          <button
-            onClick={async () => {
-              try {
-                await PriceService.openSwapForm(
-                  "eip155:8453/erc20:0x4200000000000000000000000000000000000006", // ETH
-                  "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
-                  "1000000000000000000" // 1 ETH
-                );
-              } catch (error) {
-                console.error("Error opening swap form:", error);
-              }
-            }}
-            className="w-full bg-purple-500 hover:bg-purple-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors"
-          >
-            Open Swap Form
-          </button>
+          <div className="space-y-2">
+            <button
+              onClick={async () => {
+                try {
+                  await PriceService.openSwapForm(
+                    "eip155:8453/slip44:60", // ETH
+                    "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
+                    "1000000000000000000" // 1 ETH
+                  );
+                } catch (error) {
+                  console.error("Error opening buy swap form:", error);
+                }
+              }}
+              className="w-full bg-green-500 hover:bg-green-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors"
+            >
+              Buy pTradoor (ETH → pTradoor)
+            </button>
+
+            <button
+              onClick={async () => {
+                try {
+                  await PriceService.openSwapForm(
+                    "eip155:8453/erc20:0x41Ed0311640A5e489A90940b1c33433501a21B07", // pTradoor
+                    "eip155:8453/slip44:60", // ETH
+                    "1000000000000000000" // 1 pTradoor
+                  );
+                } catch (error) {
+                  console.error("Error opening sell swap form:", error);
+                }
+              }}
+              className="w-full bg-red-500 hover:bg-red-600 text-white text-sm font-medium py-2 px-4 rounded-md transition-colors"
+            >
+              Sell pTradoor (pTradoor → ETH)
+            </button>
+          </div>
         )}
       </div>
     </div>
