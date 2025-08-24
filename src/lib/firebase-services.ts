@@ -164,6 +164,10 @@ export const userService = {
           initialPoints.points,
           newProfile.tier
         );
+
+        // Ensure leaderboard entry exists and is properly synced
+        await leaderboardService.ensureLeaderboardEntry(address);
+
         console.log("Leaderboard updated successfully");
 
         // Recalculate all user ranks
@@ -654,22 +658,176 @@ export const leaderboardService = {
   ): Promise<void> {
     try {
       const userProfile = await userService.getUserProfile(address);
-      if (!userProfile) return;
+      if (!userProfile) {
+        console.warn(`User profile not found for address: ${address}`);
+        return;
+      }
 
       const leaderboardRef = doc(db, "leaderboard", address);
       await setDoc(leaderboardRef, {
         userAddress: address,
         points,
+        rank: 0, // Will be calculated in recalculateRankings
         tier,
-        transactions: userProfile.totalTransactions,
-        ptradoorBalance: userProfile.ptradoorBalance,
+        transactions: userProfile.totalTransactions || 0,
+        ptradoorBalance: userProfile.ptradoorBalance || 0,
         lastUpdated: serverTimestamp(),
       });
+
+      console.log(
+        `Leaderboard entry updated for ${address}: ${points} points, ${tier} tier`
+      );
 
       // Recalculate all rankings after updating the entry
       await this.recalculateRankings();
     } catch (error) {
       console.error("Error updating leaderboard entry:", error);
+    }
+  },
+
+  // Ensure leaderboard entry exists for a user
+  async ensureLeaderboardEntry(address: string): Promise<void> {
+    try {
+      const userProfile = await userService.getUserProfile(address);
+      if (!userProfile) {
+        console.warn(`User profile not found for address: ${address}`);
+        return;
+      }
+
+      const leaderboardRef = doc(db, "leaderboard", address);
+      const leaderboardDoc = await getDoc(leaderboardRef);
+
+      if (!leaderboardDoc.exists()) {
+        // Create new leaderboard entry
+        console.log(`Creating new leaderboard entry for ${address}`);
+        await this.updateLeaderboardEntry(
+          address,
+          userProfile.totalPoints || 0,
+          userProfile.tier || "Bronze"
+        );
+      } else {
+        // Update existing entry with current user data
+        const currentEntry = leaderboardDoc.data() as LeaderboardEntry;
+        if (
+          currentEntry.points !== userProfile.totalPoints ||
+          currentEntry.tier !== userProfile.tier
+        ) {
+          console.log(
+            `Updating leaderboard entry for ${address} - points: ${currentEntry.points} → ${userProfile.totalPoints}, tier: ${currentEntry.tier} → ${userProfile.tier}`
+          );
+          await this.updateLeaderboardEntry(
+            address,
+            userProfile.totalPoints || 0,
+            userProfile.tier || "Bronze"
+          );
+        }
+      }
+    } catch (error) {
+      console.error("Error ensuring leaderboard entry:", error);
+    }
+  },
+
+  // Sync all users to leaderboard (admin function)
+  async syncAllUsersToLeaderboard(): Promise<void> {
+    try {
+      console.log("🔄 Syncing all users to leaderboard...");
+
+      // Get all users
+      const usersQuery = query(collection(db, "users"));
+      const usersSnapshot = await getDocs(usersQuery);
+
+      console.log(`Found ${usersSnapshot.size} users to sync`);
+
+      // Ensure leaderboard entries for all users
+      for (const userDoc of usersSnapshot.docs) {
+        const userData = userDoc.data() as UserProfile;
+        await this.ensureLeaderboardEntry(userData.address);
+      }
+
+      // Recalculate all rankings
+      await this.recalculateRankings();
+
+      console.log("✅ All users synced to leaderboard successfully");
+    } catch (error) {
+      console.error("Error syncing users to leaderboard:", error);
+      throw error;
+    }
+  },
+
+  // Diagnostic function to identify data mismatches
+  async diagnoseLeaderboardIssues(): Promise<{
+    totalUsers: number;
+    totalLeaderboardEntries: number;
+    mismatchedUsers: Array<{
+      address: string;
+      userPoints: number;
+      leaderboardPoints: number;
+      userTier: string;
+      leaderboardTier: string;
+    }>;
+    missingEntries: string[];
+  }> {
+    try {
+      console.log("🔍 Diagnosing leaderboard issues...");
+
+      // Get all users
+      const usersQuery = query(collection(db, "users"));
+      const usersSnapshot = await getDocs(usersQuery);
+
+      // Get all leaderboard entries
+      const leaderboardQuery = query(collection(db, "leaderboard"));
+      const leaderboardSnapshot = await getDocs(leaderboardQuery);
+
+      const mismatchedUsers: Array<{
+        address: string;
+        userPoints: number;
+        leaderboardPoints: number;
+        userTier: string;
+        leaderboardTier: string;
+      }> = [];
+
+      const missingEntries: string[] = [];
+
+      // Check each user
+      for (const userDoc of usersSnapshot.docs) {
+        const userData = userDoc.data() as UserProfile;
+        const leaderboardDoc = leaderboardSnapshot.docs.find(
+          (doc) => doc.id === userData.address
+        );
+
+        if (!leaderboardDoc) {
+          missingEntries.push(userData.address);
+          continue;
+        }
+
+        const leaderboardData = leaderboardDoc.data() as LeaderboardEntry;
+
+        if (
+          userData.totalPoints !== leaderboardData.points ||
+          userData.tier !== leaderboardData.tier
+        ) {
+          mismatchedUsers.push({
+            address: userData.address,
+            userPoints: userData.totalPoints || 0,
+            leaderboardPoints: leaderboardData.points || 0,
+            userTier: userData.tier || "Bronze",
+            leaderboardTier: leaderboardData.tier || "Bronze",
+          });
+        }
+      }
+
+      const result = {
+        totalUsers: usersSnapshot.size,
+        totalLeaderboardEntries: leaderboardSnapshot.size,
+        mismatchedUsers,
+        missingEntries,
+      };
+
+      console.log("🔍 Leaderboard diagnosis complete:", result);
+      return result;
+    } catch (error) {
+      console.error("Error diagnosing leaderboard issues:", error);
+      throw error;
     }
   },
 

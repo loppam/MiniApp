@@ -341,6 +341,76 @@ export default function AdminPage() {
     }
   };
 
+  const handleSyncUsersToLeaderboard = async () => {
+    try {
+      console.log("Syncing all users to leaderboard...");
+      setMessage({ type: "info", text: "Syncing all users to leaderboard..." });
+
+      const { leaderboardService } = await import("~/lib/firebase-services");
+      await leaderboardService.syncAllUsersToLeaderboard();
+      await loadData(); // Reload data to show updated leaderboard
+
+      setMessage({
+        type: "success",
+        text: "All users synced to leaderboard successfully!",
+      });
+      console.log("All users synced to leaderboard successfully");
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error("Error syncing users to leaderboard:", error);
+      setMessage({
+        type: "error",
+        text: `Error syncing users to leaderboard: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+
+      // Clear error message after 5 seconds
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
+  const handleDiagnoseLeaderboard = async () => {
+    try {
+      console.log("Diagnosing leaderboard issues...");
+      setMessage({ type: "info", text: "Diagnosing leaderboard issues..." });
+
+      const { leaderboardService } = await import("~/lib/firebase-services");
+      const diagnosis = await leaderboardService.diagnoseLeaderboardIssues();
+
+      console.log("Leaderboard diagnosis:", diagnosis);
+
+      if (
+        diagnosis.mismatchedUsers.length === 0 &&
+        diagnosis.missingEntries.length === 0
+      ) {
+        setMessage({
+          type: "success",
+          text: "No leaderboard issues found! All data is synchronized.",
+        });
+      } else {
+        setMessage({
+          type: "error",
+          text: `Found ${diagnosis.mismatchedUsers.length} mismatched users and ${diagnosis.missingEntries.length} missing entries. Check console for details.`,
+        });
+      }
+
+      // Clear message after 5 seconds
+      setTimeout(() => setMessage(null), 5000);
+    } catch (error) {
+      console.error("Error diagnosing leaderboard:", error);
+      setMessage({
+        type: "error",
+        text: `Error diagnosing leaderboard: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
   const handleRefreshPerformanceMetrics = async () => {
     try {
       console.log("Getting performance metrics...");
@@ -1175,14 +1245,32 @@ export default function AdminPage() {
                   View and manage user rankings and points
                 </p>
               </div>
-              <Button
-                onClick={handleRecalculateLeaderboard}
-                variant="outline"
-                className="flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Recalculate Rankings
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  onClick={handleSyncUsersToLeaderboard}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Sync All Users
+                </Button>
+                <Button
+                  onClick={handleRecalculateLeaderboard}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="h-4 w-4" />
+                  Recalculate Rankings
+                </Button>
+                <Button
+                  onClick={handleDiagnoseLeaderboard}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Target className="h-4 w-4" />
+                  Diagnose Leaderboard
+                </Button>
+              </div>
             </div>
 
             {/* Leaderboard Display */}
