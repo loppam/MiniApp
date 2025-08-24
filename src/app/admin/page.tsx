@@ -35,13 +35,19 @@ import {
   Lock,
   Unlock,
   Clock,
+  RefreshCw,
 } from "lucide-react";
 import {
   achievementService,
   milestoneService,
   platformStatsService,
 } from "~/lib/firebase-services";
-import { Achievement, Milestone, PlatformStats } from "~/types/firebase";
+import {
+  Achievement,
+  Milestone,
+  PlatformStats,
+  LeaderboardEntry,
+} from "~/types/firebase";
 
 interface AdminAuth {
   username: string;
@@ -68,6 +74,7 @@ export default function AdminPage() {
     dataFreshness: number;
     dataSize: number;
   } | null>(null);
+  const [leaderboard, setLeaderboard] = useState<LeaderboardEntry[]>([]);
 
   // Message states
   const [message, setMessage] = useState<{
@@ -136,6 +143,16 @@ export default function AdminPage() {
         setPerformanceMetrics(metrics);
       } catch (metricsError) {
         console.warn("Could not load performance metrics:", metricsError);
+      }
+
+      // Load leaderboard data
+      try {
+        const { leaderboardService } = await import("~/lib/firebase-services");
+        const leaderboardData = await leaderboardService.getTopUsers(50); // Get top 50 users
+        setLeaderboard(leaderboardData);
+      } catch (leaderboardError) {
+        console.warn("Could not load leaderboard data:", leaderboardError);
+        setLeaderboard([]);
       }
     } catch (error) {
       console.error("Error loading admin data:", error);
@@ -293,6 +310,37 @@ export default function AdminPage() {
     }
   };
 
+  const handleRecalculateLeaderboard = async () => {
+    try {
+      console.log("Recalculating leaderboard...");
+      setMessage({ type: "info", text: "Recalculating leaderboard..." });
+
+      const { leaderboardService } = await import("~/lib/firebase-services");
+      await leaderboardService.recalculateRankings();
+      await loadData(); // Reload data to show updated leaderboard
+
+      setMessage({
+        type: "success",
+        text: "Leaderboard recalculated successfully!",
+      });
+      console.log("Leaderboard recalculated successfully");
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error("Error recalculating leaderboard:", error);
+      setMessage({
+        type: "error",
+        text: `Error recalculating leaderboard: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+
+      // Clear error message after 5 seconds
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
   const handleRefreshPerformanceMetrics = async () => {
     try {
       console.log("Getting performance metrics...");
@@ -397,10 +445,11 @@ export default function AdminPage() {
         {/* Main Content */}
         <Tabs defaultValue="achievements" className="space-y-6">
           <TabsList className="grid w-full grid-cols-4">
+            <TabsTrigger value="overview">Overview</TabsTrigger>
             <TabsTrigger value="achievements">Achievements</TabsTrigger>
             <TabsTrigger value="milestones">Milestones</TabsTrigger>
-            <TabsTrigger value="platform">Platform Stats</TabsTrigger>
-            <TabsTrigger value="overview">Overview</TabsTrigger>
+            <TabsTrigger value="platform">Platform</TabsTrigger>
+            <TabsTrigger value="leaderboard">Leaderboard</TabsTrigger>
           </TabsList>
 
           {/* Achievements Tab */}
@@ -1034,6 +1083,9 @@ export default function AdminPage() {
               >
                 Recalculate Platform Stats
               </Button>
+              <Button onClick={handleRecalculateLeaderboard} className="flex-1">
+                Recalculate Leaderboard
+              </Button>
               <Button
                 onClick={handleRefreshPerformanceMetrics}
                 variant="outline"
@@ -1085,6 +1137,127 @@ export default function AdminPage() {
                 </div>
               </div>
             )}
+          </TabsContent>
+
+          {/* Leaderboard Tab */}
+          <TabsContent value="leaderboard" className="space-y-6">
+            <h2 className="text-xl font-semibold">Leaderboard Management</h2>
+
+            {/* Message Display */}
+            {message && (
+              <Alert
+                className={
+                  message.type === "error"
+                    ? "border-red-500 bg-red-50"
+                    : message.type === "success"
+                    ? "border-green-500 bg-green-50"
+                    : "border-blue-500 bg-blue-50"
+                }
+              >
+                <AlertDescription
+                  className={
+                    message.type === "error"
+                      ? "text-red-700"
+                      : message.type === "success"
+                      ? "text-green-700"
+                      : "text-blue-700"
+                  }
+                >
+                  {message.text}
+                </AlertDescription>
+              </Alert>
+            )}
+
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-lg font-medium">Current Leaderboard</h3>
+                <p className="text-sm text-muted-foreground">
+                  View and manage user rankings and points
+                </p>
+              </div>
+              <Button
+                onClick={handleRecalculateLeaderboard}
+                variant="outline"
+                className="flex items-center gap-2"
+              >
+                <RefreshCw className="h-4 w-4" />
+                Recalculate Rankings
+              </Button>
+            </div>
+
+            {/* Leaderboard Display */}
+            <div className="space-y-4">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <Trophy className="h-5 w-5 text-yellow-500" />
+                    Top Users by Points
+                  </CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-3">
+                    {leaderboard.length > 0 ? (
+                      <div className="space-y-2">
+                        {leaderboard.map((entry, index) => (
+                          <div
+                            key={entry.userAddress}
+                            className="flex items-center justify-between p-3 rounded-lg bg-accent/30 border border-border"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-full bg-yellow-500/20 flex items-center justify-center">
+                                <span className="text-sm font-bold text-yellow-600">
+                                  #{index + 1}
+                                </span>
+                              </div>
+                              <div>
+                                <div className="font-medium text-sm">
+                                  {entry.userAddress.slice(0, 6)}...
+                                  {entry.userAddress.slice(-4)}
+                                </div>
+                                <div className="text-xs text-muted-foreground">
+                                  Tier: {entry.tier}
+                                </div>
+                              </div>
+                            </div>
+                            <div className="text-right">
+                              <div className="font-semibold text-sm">
+                                {entry.points.toLocaleString()} pts
+                              </div>
+                              <div className="text-xs text-muted-foreground">
+                                {entry.lastUpdated
+                                  ?.toDate()
+                                  .toLocaleDateString() || "Unknown"}
+                              </div>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : platformStats && platformStats.totalUsers > 0 ? (
+                      <div className="text-center py-8">
+                        <div className="text-sm text-muted-foreground mb-2">
+                          Leaderboard data will be displayed here
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Total users:{" "}
+                          {platformStats.totalUsers.toLocaleString()}
+                        </div>
+                        <div className="text-xs text-muted-foreground">
+                          Total points:{" "}
+                          {(platformStats.totalPoints / 1000).toFixed(1)}K
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-center py-8">
+                        <div className="text-sm text-muted-foreground">
+                          No users found. Start by creating some achievements
+                          and milestones.
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
           </TabsContent>
 
           {/* Overview Tab */}
