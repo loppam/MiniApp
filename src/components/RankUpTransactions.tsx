@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { useAccount, useWaitForTransactionReceipt } from "wagmi";
 import { useUserProfile, useTransactions } from "~/hooks/useFirebase";
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, FieldValue } from "firebase/firestore";
 import { useState, useCallback } from "react";
 // import { TradingSystem } from "~/lib/trading-system";p
 import { PriceService } from "~/lib/price-service";
@@ -91,11 +91,20 @@ export function RankUpTransactions() {
   });
 
   const formatTime = (
-    timestamp: Timestamp | Date | string | null | undefined
+    timestamp: Timestamp | FieldValue | Date | string | null | undefined
   ) => {
     if (!timestamp) return "Unknown";
-    const date =
-      timestamp instanceof Timestamp ? timestamp.toDate() : new Date(timestamp);
+    if (timestamp instanceof Timestamp) {
+      return timestamp.toDate().toLocaleString();
+    }
+    if (
+      typeof timestamp === "object" &&
+      "toDate" in timestamp &&
+      typeof timestamp.toDate === "function"
+    ) {
+      return timestamp.toDate().toLocaleString();
+    }
+    const date = new Date(timestamp as string | number);
     return date.toLocaleString();
   };
 

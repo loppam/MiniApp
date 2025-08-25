@@ -198,7 +198,7 @@ Join me on Base chain's premier trading platform! 🚀
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {profile.joinDate
+                  {profile.joinDate && 'toDate' in profile.joinDate
                     ? formatDate(profile.joinDate.toDate().toISOString())
                     : "Recently joined"}
                 </span>

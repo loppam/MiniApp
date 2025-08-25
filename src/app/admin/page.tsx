@@ -1180,9 +1180,9 @@ export default function AdminPage() {
                             Last Updated
                           </p>
                           <p className="text-sm font-medium">
-                            {platformStats.lastUpdated
-                              ?.toDate()
-                              .toLocaleString() || "Never"}
+                            {platformStats.lastUpdated && 'toDate' in platformStats.lastUpdated
+                              ? platformStats.lastUpdated.toDate().toLocaleString()
+                              : "Never"}
                           </p>
                         </div>
                       </div>
@@ -1366,9 +1366,9 @@ export default function AdminPage() {
                                 {entry.points.toLocaleString()} pts
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {entry.lastUpdated
-                                  ?.toDate()
-                                  .toLocaleDateString() || "Unknown"}
+                                {entry.lastUpdated && 'toDate' in entry.lastUpdated
+                                  ? entry.lastUpdated.toDate().toLocaleDateString()
+                                  : "Unknown"}
                               </div>
                             </div>
                           </div>

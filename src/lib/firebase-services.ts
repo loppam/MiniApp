@@ -26,7 +26,7 @@ import {
   PlatformStats,
   Milestone,
 } from "~/types/firebase";
-import { BaseChainService, PointCalculation } from "./base-chain";
+import { PointCalculation } from "./base-chain";
 
 // Utility function to remove undefined values from objects
 function removeUndefinedValues<T extends Record<string, unknown>>(obj: T): T {
@@ -99,10 +99,10 @@ export const userService = {
       if (!exists) {
         // New user - allocate initial points first, then create profile
         console.log("Creating new user profile...");
-        
+
         // Allocate initial points before creating profile
         const initialPoints = await this.allocateInitialPoints(address);
-        
+
         const newProfile: UserProfile = {
           address,
           fid: context?.user?.fid || 0,
@@ -156,10 +156,10 @@ export const userService = {
           initialPoints.points,
           newProfile.tier
         );
-        
+
         // Ensure leaderboard entry exists and is properly synced
         await leaderboardService.ensureLeaderboardEntry(address);
-        
+
         console.log("Leaderboard updated successfully");
 
         // Recalculate all user ranks
@@ -188,16 +188,20 @@ export const userService = {
   async allocateInitialPoints(address: string): Promise<PointCalculation> {
     try {
       console.log("🎯 Starting initial points allocation for:", address);
-      
+
       // Check if user already exists and has initial points
       const userRef = doc(db, "users", address);
       const userDoc = await getDoc(userRef);
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data() as UserProfile;
         if (userData.initial === true && userData.totalPoints > 0) {
           console.log("👤 User exists, initial flag: true");
-          console.log("✅ User", address, "already has initial points, returning current state");
+          console.log(
+            "✅ User",
+            address,
+            "already has initial points, returning current state"
+          );
           return {
             totalTransactions: userData.totalTransactions || 0,
             totalGasUsed: 0, // Not stored in user profile
@@ -211,13 +215,17 @@ export const userService = {
           };
         }
       }
-      
-      console.log("🆕 User", address, "does not exist yet, will allocate initial points");
-      
+
+      console.log(
+        "🆕 User",
+        address,
+        "does not exist yet, will allocate initial points"
+      );
+
       // Fetch Base chain data for initial points calculation
       console.log("🔍 Fetching Base chain data for", address, "...");
       const baseChainData = await this.fetchBaseChainData(address);
-      
+
       if (!baseChainData) {
         console.log("⚠️ No Base chain data found, using default points");
         return {
@@ -232,11 +240,15 @@ export const userService = {
           },
         };
       }
-      
+
       // Calculate initial points based on Base chain activity
       const initialPoints = this.calculateInitialPoints(baseChainData);
-      
-      console.log("💰 Final initial points allocated for", address + ":", initialPoints);
+
+      console.log(
+        "💰 Final initial points allocated for",
+        address + ":",
+        initialPoints
+      );
       return initialPoints;
     } catch (error) {
       console.error("Error allocating initial points:", error);
@@ -256,7 +268,7 @@ export const userService = {
   },
 
   // Fetch Base chain data for a user address
-  private async fetchBaseChainData(address: string): Promise<any> {
+  async fetchBaseChainData(address: string): Promise<PointCalculation | null> {
     try {
       // Import the BaseChainService dynamically to avoid circular dependencies
       const { BaseChainService } = await import("~/lib/base-chain");
@@ -268,18 +280,18 @@ export const userService = {
   },
 
   // Calculate initial points based on Base chain data
-  private calculateInitialPoints(baseChainData: any): PointCalculation {
+  calculateInitialPoints(baseChainData: PointCalculation): PointCalculation {
     try {
       // This should match the logic from BaseChainService
       const { totalTransactions, totalGasUsed, totalValue } = baseChainData;
-      
+
       // Calculate points based on activity
       const transactionPoints = totalTransactions * 5; // 5 points per transaction
       const gasPoints = Math.floor(totalGasUsed / 1e9); // 1 point per 1 Gwei
       const valuePoints = Math.min(Math.floor(totalValue / 1e18), 1000); // 1 point per ETH, capped at 1000
-      
+
       const totalPoints = transactionPoints + gasPoints + valuePoints;
-      
+
       return {
         totalTransactions,
         totalGasUsed,
@@ -440,24 +452,31 @@ export const userService = {
   }> {
     try {
       console.log("🔧 Fixing users with incorrect initial data...");
-      
+
       const usersQuery = query(collection(db, "users"));
       const usersSnapshot = await getDocs(usersQuery);
-      
+
       let fixedUsers = 0;
       const errors: string[] = [];
-      
+
       for (const userDoc of usersSnapshot.docs) {
         const userData = userDoc.data() as UserProfile;
-        
+
         // Check if user has initial flag but incorrect data
-        if (userData.initial === true && (userData.totalPoints === 0 || userData.totalTransactions === 0)) {
+        if (
+          userData.initial === true &&
+          (userData.totalPoints === 0 || userData.totalTransactions === 0)
+        ) {
           try {
-            console.log(`🔧 Fixing user ${userData.address} with incorrect initial data`);
-            
+            console.log(
+              `🔧 Fixing user ${userData.address} with incorrect initial data`
+            );
+
             // Re-allocate initial points
-            const initialPoints = await this.allocateInitialPoints(userData.address);
-            
+            const initialPoints = await this.allocateInitialPoints(
+              userData.address
+            );
+
             // Update user profile with correct data
             await updateDoc(userDoc.ref, {
               totalPoints: initialPoints.points,
@@ -465,30 +484,34 @@ export const userService = {
               tier: calculateTier(initialPoints.points),
               updatedAt: serverTimestamp(),
             });
-            
+
             // Update leaderboard entry
             await leaderboardService.updateLeaderboardEntry(
               userData.address,
               initialPoints.points,
               calculateTier(initialPoints.points)
             );
-            
+
             fixedUsers++;
-            console.log(`✅ Fixed user ${userData.address}: ${initialPoints.points} points, ${initialPoints.totalTransactions} transactions`);
+            console.log(
+              `✅ Fixed user ${userData.address}: ${initialPoints.points} points, ${initialPoints.totalTransactions} transactions`
+            );
           } catch (userError) {
-            const errorMsg = `Failed to fix user ${userData.address}: ${userError instanceof Error ? userError.message : 'Unknown error'}`;
+            const errorMsg = `Failed to fix user ${userData.address}: ${
+              userError instanceof Error ? userError.message : "Unknown error"
+            }`;
             console.error(errorMsg);
             errors.push(errorMsg);
           }
         }
       }
-      
+
       if (fixedUsers > 0) {
         // Recalculate all rankings after fixing users
         await leaderboardService.recalculateRankings();
         console.log("🔄 Recalculated rankings after fixing users");
       }
-      
+
       console.log(`✅ Fixed ${fixedUsers} users with incorrect initial data`);
       return { fixedUsers, errors };
     } catch (error) {
@@ -845,30 +868,28 @@ export const leaderboardService = {
   async syncAllUsersToLeaderboard(): Promise<void> {
     try {
       console.log("🔄 Syncing all users to leaderboard...");
-      
+
       // Get all users
       const usersQuery = query(collection(db, "users"));
       const usersSnapshot = await getDocs(usersQuery);
-      
+
       console.log(`Found ${usersSnapshot.size} users to sync`);
-      
+
       // Ensure leaderboard entries for all users
       for (const userDoc of usersSnapshot.docs) {
         const userData = userDoc.data() as UserProfile;
         await this.ensureLeaderboardEntry(userData.address);
       }
-      
+
       // Recalculate all rankings
       await this.recalculateRankings();
-      
+
       console.log("✅ All users synced to leaderboard successfully");
     } catch (error) {
       console.error("Error syncing users to leaderboard:", error);
       throw error;
     }
   },
-
-
 
   // Diagnostic function to identify data mismatches
   async diagnoseLeaderboardIssues(): Promise<{
@@ -1164,9 +1185,10 @@ export const platformStatsService = {
       const stats = await this.getPlatformStats();
       const responseTime = Date.now() - start;
 
-      const lastUpdateDelay = stats?.lastUpdated
-        ? Date.now() - stats.lastUpdated.toMillis()
-        : Infinity;
+      const lastUpdateDelay =
+        stats?.lastUpdated && "toMillis" in stats.lastUpdated
+          ? Date.now() - stats.lastUpdated.toMillis()
+          : Infinity;
 
       const dataFreshness = Math.max(0, 300000 - lastUpdateDelay); // 5 min threshold
 

@@ -188,7 +188,10 @@ export class TradingSystem {
 
       // Update weekly streak
       const now = new Date();
-      const lastTrade = profile.lastActive?.toDate() || new Date(0);
+      const lastTrade =
+        profile.lastActive && "toDate" in profile.lastActive
+          ? profile.lastActive.toDate()
+          : new Date(0);
       const daysSinceLastTrade = Math.floor(
         (now.getTime() - lastTrade.getTime()) / (1000 * 60 * 60 * 24)
       );

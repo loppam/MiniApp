@@ -208,9 +208,14 @@ export class AchievementSystem {
           percentage,
           unlocked,
           unlockedAt: unlocked
-            ? userAchievements
-                .find((ua) => ua.achievementId === achievement.id)
-                ?.unlockedAt?.toDate()
+            ? (() => {
+                const userAchievement = userAchievements.find(
+                  (ua) => ua.achievementId === achievement.id
+                );
+                return userAchievement?.unlockedAt && 'toDate' in userAchievement.unlockedAt
+                  ? userAchievement.unlockedAt.toDate()
+                  : undefined;
+              })()
             : undefined,
           pointsReward: achievement.pointsReward,
         };

@@ -1,4 +1,4 @@
-import { Timestamp } from "firebase/firestore";
+import { Timestamp, FieldValue } from "firebase/firestore";
 
 export interface UserProfile {
   address: string;
@@ -6,8 +6,8 @@ export interface UserProfile {
   username?: string;
   displayName?: string;
   pfpUrl?: string;
-  joinDate: Timestamp;
-  lastActive: Timestamp;
+  joinDate: Timestamp | FieldValue;
+  lastActive: Timestamp | FieldValue;
   tier: "Bronze" | "Silver" | "Gold" | "Platinum" | "Diamond";
   totalPoints: number;
   currentRank: number;
@@ -19,8 +19,8 @@ export interface UserProfile {
   achievements: string[];
   hasMinted?: boolean;
   lastProcessedBlock?: number;
-  createdAt: Timestamp;
-  updatedAt: Timestamp;
+  createdAt: Timestamp | FieldValue;
+  updatedAt: Timestamp | FieldValue;
   initial?: boolean;
 }
 
@@ -33,7 +33,7 @@ export interface Transaction {
   points: number;
   status: "completed" | "pending" | "failed";
   txHash?: string;
-  timestamp: Timestamp;
+  timestamp: Timestamp | FieldValue;
   metadata?: {
     chainId?: number;
     gasUsed?: number;
@@ -60,13 +60,13 @@ export interface Achievement {
   };
   pointsReward: number;
   isActive: boolean;
-  createdAt: Timestamp;
+  createdAt: Timestamp | FieldValue;
 }
 
 export interface UserAchievement {
   userAddress: string;
   achievementId: string;
-  unlockedAt: Timestamp;
+  unlockedAt: Timestamp | FieldValue;
   progress?: number;
 }
 
@@ -77,7 +77,7 @@ export interface LeaderboardEntry {
   tier: string;
   transactions: number;
   ptradoorBalance: number;
-  lastUpdated: Timestamp;
+  lastUpdated: Timestamp | FieldValue;
 }
 
 export interface PlatformStats {
@@ -86,7 +86,7 @@ export interface PlatformStats {
   totalPoints: number;
   ptradoorSupply: number;
   ptradoorCirculating: number;
-  lastUpdated: Timestamp;
+  lastUpdated: Timestamp | FieldValue;
 }
 
 export interface Milestone {
@@ -96,7 +96,7 @@ export interface Milestone {
   current: number;
   completed: boolean;
   type: "users" | "transactions" | "points";
-  createdAt: Timestamp;
+  createdAt: Timestamp | FieldValue;
 }
 
 export interface TierInfo {
