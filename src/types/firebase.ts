@@ -15,6 +15,7 @@ export interface UserProfile {
   ptradoorBalance: number;
   ptradoorEarned: number;
   weeklyStreak: number;
+  lastHoldingBonusDate?: Timestamp | FieldValue;
   referrals: number;
   achievements: string[];
   hasMinted?: boolean;

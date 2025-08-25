@@ -4,6 +4,7 @@ import {
   achievementService,
 } from "./firebase-services";
 import { PriceService } from "./price-service";
+import { Timestamp } from "firebase/firestore";
 
 // pTradoor token contract address on Base
 const PTRADOOR_CONTRACT_ADDRESS = "0x41Ed0311640A5e489A90940b1c33433501a21B07";
@@ -12,7 +13,7 @@ const PTRADOOR_CONTRACT_ADDRESS = "0x41Ed0311640A5e489A90940b1c33433501a21B07";
 const BASE_POINTS_PER_TRADE = 5; // Base points scaling factor for sqrt model
 const MINTING_MULTIPLIER = 3; // 3x points for users who have minted
 const MAX_POINTS_PER_TRADE = 1000; // Hard cap to prevent farming by whales
-const POINTS_PER_PTRADOOR_HOLD = 0.1; // per day
+const POINTS_PER_PTRADOOR_HOLD = 0.0001; // per day (reduced from 0.1)
 const STREAK_BONUS_POINTS = 50; // weekly streak bonus
 
 export interface TradeResult {
@@ -86,6 +87,9 @@ export class TradingSystem {
       // Update pTradoor balance
       await this.updatePTradoorBalance(userAddress, tokenAmount, type);
 
+      // Update transaction count
+      await this.updateTransactionCount(userAddress);
+
       // Check for achievements
       const achievementsUnlocked =
         await achievementService.checkAndAwardAchievements(userAddress);
@@ -149,6 +153,29 @@ export class TradingSystem {
     const currentPrice = await PriceService.getPTradoorPrice();
     const tokenAmount = usdAmount / currentPrice;
     return Math.round(tokenAmount * 100) / 100;
+  }
+
+  // Update transaction count for user
+  private static async updateTransactionCount(
+    userAddress: string
+  ): Promise<void> {
+    try {
+      const profile = await userService.getUserProfile(userAddress);
+      if (!profile) return;
+
+      const newTransactionCount = (profile.totalTransactions || 0) + 1;
+
+      await userService.upsertUserProfile(userAddress, {
+        totalTransactions: newTransactionCount,
+        lastActive: new Date() as unknown as Timestamp,
+      });
+
+      console.log(
+        `Updated transaction count for ${userAddress}: ${newTransactionCount}`
+      );
+    } catch (error) {
+      console.error("Error updating transaction count:", error);
+    }
   }
 
   // Update pTradoor balance
@@ -295,12 +322,37 @@ export class TradingSystem {
   }
 
   // Award daily holding bonus
-  static async awardHoldingBonus(userAddress: string): Promise<void> {
+  static async awardHoldingBonus(userAddress: string): Promise<number> {
     try {
-      const holdingBonus = await this.calculateHoldingBonus(userAddress);
+      const profile = await userService.getUserProfile(userAddress);
+      if (!profile || profile.ptradoorBalance === 0) return 0;
+
+      // Check if bonus was already given today
+      const now = new Date();
+      const lastBonus =
+        profile.lastHoldingBonusDate && "toDate" in profile.lastHoldingBonusDate
+          ? profile.lastHoldingBonusDate.toDate()
+          : new Date(0);
+
+      const daysSinceLastBonus = Math.floor(
+        (now.getTime() - lastBonus.getTime()) / (1000 * 60 * 60 * 24)
+      );
+
+      if (daysSinceLastBonus < 1) {
+        return 0; // Already given today
+      }
+
+      const holdingBonus = Math.floor(
+        profile.ptradoorBalance * POINTS_PER_PTRADOOR_HOLD
+      );
 
       if (holdingBonus > 0) {
         await userService.updateUserPoints(userAddress, holdingBonus);
+
+        // Update last bonus date
+        await userService.upsertUserProfile(userAddress, {
+          lastHoldingBonusDate: new Date() as unknown as Timestamp,
+        });
 
         // Record holding bonus transaction
         await transactionService.addTransaction({
@@ -311,13 +363,52 @@ export class TradingSystem {
           status: "completed",
           metadata: {
             chainId: 8453,
-            bonusType: "holding",
+            bonusType: "daily_holding",
           },
         });
       }
+
+      return holdingBonus;
     } catch (error) {
       console.error("Error awarding holding bonus:", error);
+      return 0;
     }
+  }
+
+  // Distribute daily holding bonuses to all users
+  static async distributeDailyBonuses(): Promise<{
+    usersProcessed: number;
+    totalBonusAwarded: number;
+    errors: string[];
+  }> {
+    const result = {
+      usersProcessed: 0,
+      totalBonusAwarded: 0,
+      errors: [] as string[],
+    };
+
+    try {
+      // Get all users with pTradoor balances
+      const users = await userService.getAllUsersWithBalances();
+
+      for (const user of users) {
+        try {
+          if (user.ptradoorBalance > 0) {
+            const bonus = await this.awardHoldingBonus(user.address);
+            if (bonus > 0) {
+              result.totalBonusAwarded += bonus;
+            }
+            result.usersProcessed++;
+          }
+        } catch (error) {
+          result.errors.push(`User ${user.address}: ${error}`);
+        }
+      }
+    } catch (error) {
+      result.errors.push(`System error: ${error}`);
+    }
+
+    return result;
   }
 
   // Get trading recommendations

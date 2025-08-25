@@ -372,6 +372,45 @@ export default function AdminPage() {
     }
   };
 
+  const handleDistributeDailyBonus = async () => {
+    try {
+      console.log("Distributing daily bonuses...");
+      setMessage({ type: "info", text: "Distributing daily bonuses..." });
+
+      const response = await fetch("/api/cron/daily-bonus", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "distribute" }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        setMessage({
+          type: "success",
+          text: `Daily bonuses distributed! ${result.result.usersProcessed} users processed, ${result.result.totalBonusAwarded} total points awarded.`,
+        });
+        console.log("Daily bonuses distributed successfully");
+        await loadData(); // Reload data to show updated stats
+      } else {
+        throw new Error("Failed to distribute bonuses");
+      }
+
+      // Clear success message after 3 seconds
+      setTimeout(() => setMessage(null), 3000);
+    } catch (error) {
+      console.error("Error distributing daily bonuses:", error);
+      setMessage({
+        type: "error",
+        text: `Error distributing bonuses: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+
+      // Clear error message after 5 seconds
+      setTimeout(() => setMessage(null), 5000);
+    }
+  };
+
   const handleDiagnoseLeaderboard = async () => {
     try {
       console.log("Diagnosing leaderboard issues...");
@@ -1180,8 +1219,11 @@ export default function AdminPage() {
                             Last Updated
                           </p>
                           <p className="text-sm font-medium">
-                            {platformStats.lastUpdated && 'toDate' in platformStats.lastUpdated
-                              ? platformStats.lastUpdated.toDate().toLocaleString()
+                            {platformStats.lastUpdated &&
+                            "toDate" in platformStats.lastUpdated
+                              ? platformStats.lastUpdated
+                                  .toDate()
+                                  .toLocaleString()
                               : "Never"}
                           </p>
                         </div>
@@ -1201,6 +1243,13 @@ export default function AdminPage() {
               </Button>
               <Button onClick={handleRecalculateLeaderboard} className="flex-1">
                 Recalculate Leaderboard
+              </Button>
+              <Button
+                onClick={handleDistributeDailyBonus}
+                className="flex-1"
+                variant="outline"
+              >
+                Distribute Daily Bonus
               </Button>
               <Button
                 onClick={handleRefreshPerformanceMetrics}
@@ -1366,8 +1415,11 @@ export default function AdminPage() {
                                 {entry.points.toLocaleString()} pts
                               </div>
                               <div className="text-xs text-muted-foreground">
-                                {entry.lastUpdated && 'toDate' in entry.lastUpdated
-                                  ? entry.lastUpdated.toDate().toLocaleDateString()
+                                {entry.lastUpdated &&
+                                "toDate" in entry.lastUpdated
+                                  ? entry.lastUpdated
+                                      .toDate()
+                                      .toLocaleDateString()
                                   : "Unknown"}
                               </div>
                             </div>

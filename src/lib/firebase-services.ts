@@ -281,42 +281,9 @@ export const userService = {
 
   // Calculate initial points based on Base chain data
   calculateInitialPoints(baseChainData: PointCalculation): PointCalculation {
-    try {
-      // This should match the logic from BaseChainService
-      const { totalTransactions, totalGasUsed, totalValue } = baseChainData;
-
-      // Calculate points based on activity
-      const transactionPoints = totalTransactions * 5; // 5 points per transaction
-      const gasPoints = Math.floor(totalGasUsed / 1e9); // 1 point per 1 Gwei
-      const valuePoints = Math.min(Math.floor(totalValue / 1e18), 1000); // 1 point per ETH, capped at 1000
-
-      const totalPoints = transactionPoints + gasPoints + valuePoints;
-
-      return {
-        totalTransactions,
-        totalGasUsed,
-        totalValue,
-        points: totalPoints,
-        breakdown: {
-          transactionPoints,
-          gasPoints,
-          valuePoints,
-        },
-      };
-    } catch (error) {
-      console.error("Error calculating initial points:", error);
-      return {
-        totalTransactions: 0,
-        totalGasUsed: 0,
-        totalValue: 0,
-        points: 10,
-        breakdown: {
-          transactionPoints: 10,
-          gasPoints: 0,
-          valuePoints: 0,
-        },
-      };
-    }
+    // The BaseChainService already returns a complete PointCalculation.
+    // Avoid re-calculating differently here to prevent mismatches.
+    return baseChainData;
   },
 
   // Update user points and recalculate tier
@@ -445,6 +412,21 @@ export const userService = {
     }
   },
 
+  // Get all users with pTradoor balances
+  async getAllUsersWithBalances(): Promise<UserProfile[]> {
+    try {
+      const usersQuery = query(
+        collection(db, "users"),
+        where("ptradoorBalance", ">", 0)
+      );
+      const snapshot = await getDocs(usersQuery);
+      return snapshot.docs.map((doc) => doc.data() as UserProfile);
+    } catch (error) {
+      console.error("Error getting users with balances:", error);
+      return [];
+    }
+  },
+
   // Fix users with incorrect initial data (admin function)
   async fixUsersWithIncorrectInitialData(): Promise<{
     fixedUsers: number;
@@ -546,6 +528,23 @@ export const transactionService = {
         console.log("Platform stats updated - totalTransactions incremented");
       } catch (statsError) {
         console.error("Error updating platform stats:", statsError);
+      }
+
+      // Increment user's totalTransactions and activity timestamps
+      try {
+        await updateDoc(doc(db, "users", transaction.userAddress), {
+          totalTransactions: increment(1),
+          lastActive: serverTimestamp(),
+          updatedAt: serverTimestamp(),
+        });
+        console.log(
+          `Incremented totalTransactions for ${transaction.userAddress}`
+        );
+      } catch (userTxErr) {
+        console.error(
+          "Error incrementing user's totalTransactions:",
+          userTxErr
+        );
       }
 
       return docRef.id;
