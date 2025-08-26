@@ -88,6 +88,28 @@ export const userService = {
     context?: ContextData
   ): Promise<void> {
     try {
+      // Strip client-controlled fields that are server-owned to avoid accidental zeroing
+      const sanitizedProfileData: Partial<UserProfile> = (() => {
+        const disallowed: Array<keyof UserProfile> = [
+          "totalPoints",
+          "totalTransactions",
+          "tier",
+          "initial",
+          "ptradoorBalance",
+          "ptradoorEarned",
+          "currentRank",
+          "createdAt",
+          "updatedAt",
+          "joinDate",
+          "lastActive",
+        ];
+        const copy: Record<string, unknown> = { ...profileData };
+        for (const k of disallowed) {
+          if (k in copy) delete copy[k as string];
+        }
+        return copy as Partial<UserProfile>;
+      })();
+
       const userRef = doc(db, "users", address);
       const userDoc = await getDoc(userRef);
       const exists = userDoc.exists();
@@ -106,9 +128,9 @@ export const userService = {
         const newProfile: UserProfile = {
           address,
           fid: context?.user?.fid || 0,
-          username: profileData.username || "",
-          displayName: profileData.displayName || "",
-          pfpUrl: profileData.pfpUrl || "",
+          username: sanitizedProfileData.username || "",
+          displayName: sanitizedProfileData.displayName || "",
+          pfpUrl: sanitizedProfileData.pfpUrl || "",
           joinDate: serverTimestamp(),
           lastActive: serverTimestamp(),
           tier: calculateTier(initialPoints.points),
@@ -124,7 +146,7 @@ export const userService = {
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
           initial: true,
-          ...profileData,
+          ...sanitizedProfileData,
         };
 
         console.log("Creating or updating profile with data:", newProfile);
@@ -175,12 +197,11 @@ export const userService = {
 
         // Determine if we need to backfill initial points (doc exists but not initialized properly)
         const needsInitialAllocation =
-          current.initial !== true &&
-          ((current.totalPoints || 0) === 0 ||
-            (current.totalTransactions || 0) === 0);
+          (current.totalPoints || 0) === 0 ||
+          (current.totalTransactions || 0) === 0;
 
         let updateData: Record<string, unknown> = removeUndefinedValues({
-          ...profileData,
+          ...sanitizedProfileData,
           lastActive: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
