@@ -10,11 +10,11 @@ import { Timestamp } from "firebase/firestore";
 const PTRADOOR_CONTRACT_ADDRESS = "0x41Ed0311640A5e489A90940b1c33433501a21B07";
 
 // Trading constants
-const BASE_POINTS_PER_TRADE = 5; // Base points scaling factor for sqrt model
+const BASE_POINTS_PER_TRADE = 15; // Base points scaling factor for sqrt model
 const MINTING_MULTIPLIER = 3; // 3x points for users who have minted
 const MAX_POINTS_PER_TRADE = 1000; // Hard cap to prevent farming by whales
-const POINTS_PER_PTRADOOR_HOLD = 0.0001; // per day (reduced from 0.1)
-const STREAK_BONUS_POINTS = 50; // weekly streak bonus
+const POINTS_PER_PTRADOOR_HOLD = 0.00001; // per day (reduced from 0.1)
+const STREAK_BONUS_POINTS = 500; // weekly streak bonus
 
 export interface TradeResult {
   success: boolean;
