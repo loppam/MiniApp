@@ -167,15 +167,76 @@ export const userService = {
         return;
       }
 
-      // If user exists and already has initial points, just update profileData
+      // If user exists, update profile and, if needed, allocate and persist initial points
       if (exists) {
         console.log("Updating existing user...");
-        const updateData = removeUndefinedValues({
+
+        const current = userDoc.data() as UserProfile;
+
+        // Determine if we need to backfill initial points (doc exists but not initialized properly)
+        const needsInitialAllocation =
+          current.initial !== true &&
+          ((current.totalPoints || 0) === 0 ||
+            (current.totalTransactions || 0) === 0);
+
+        let updateData: Record<string, unknown> = removeUndefinedValues({
           ...profileData,
           lastActive: serverTimestamp(),
           updatedAt: serverTimestamp(),
         });
-        await updateDoc(userRef, updateData);
+
+        if (needsInitialAllocation) {
+          console.log(
+            "Existing user missing initial allocation, allocating initial points..."
+          );
+          const initialPoints = await this.allocateInitialPoints(address);
+
+          // Compute delta for platform stats totalPoints
+          const previousPoints = current.totalPoints || 0;
+          const deltaPoints = Math.max(
+            0,
+            initialPoints.points - previousPoints
+          );
+
+          updateData = {
+            ...updateData,
+            totalPoints: initialPoints.points,
+            totalTransactions: initialPoints.totalTransactions,
+            tier: calculateTier(initialPoints.points),
+            initial: true,
+          };
+
+          // Update platform stats totalPoints by delta (do not change totalUsers here)
+          try {
+            const currentStats =
+              await platformStatsService.ensurePlatformStats();
+            await platformStatsService.updatePlatformStats({
+              totalPoints: currentStats.totalPoints + deltaPoints,
+            });
+            console.log(
+              "Platform stats updated - totalPoints incremented by (initial backfill)",
+              deltaPoints
+            );
+          } catch (statsError) {
+            console.error(
+              "Error updating platform stats (initial backfill):",
+              statsError
+            );
+          }
+
+          // Ensure leaderboard reflects initial points
+          try {
+            await leaderboardService.updateLeaderboardEntry(
+              address,
+              initialPoints.points,
+              calculateTier(initialPoints.points)
+            );
+          } catch (e) {
+            console.error("Error updating leaderboard on initial backfill:", e);
+          }
+        }
+
+        await updateDoc(userRef, updateData as Partial<UserProfile>);
         console.log("User updated successfully");
       }
     } catch (error) {
