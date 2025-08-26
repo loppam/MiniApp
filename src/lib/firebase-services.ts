@@ -145,7 +145,7 @@ export const userService = {
           hasMinted: false,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp(),
-          initial: true,
+          initial: false,
           ...sanitizedProfileData,
         };
 
