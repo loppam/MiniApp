@@ -25,6 +25,33 @@ export class PriceService {
     "0x41Ed0311640A5e489A90940b1c33433501a21B07" as const;
 
   /**
+   * Get ERC-20 token price by contract via CoinGecko Simple Token Price API
+   * platformId examples: 'ethereum', 'base', 'arbitrum-one'
+   */
+  static async getTokenPriceByContract(
+    platformId: string,
+    contractAddress: string
+  ): Promise<number | null> {
+    try {
+      const url = `https://api.coingecko.com/api/v3/simple/token_price/${platformId}?contract_addresses=${contractAddress}&vs_currencies=usd`;
+      const response = await fetch(url);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      const key = Object.keys(data)[0];
+      const price = key ? data[key]?.usd : null;
+      return typeof price === "number" && isFinite(price) ? price : null;
+    } catch (error) {
+      console.warn(
+        "Error fetching token price by contract from CoinGecko:",
+        error
+      );
+      return null;
+    }
+  }
+
+  /**
    * Get current ETH price from CoinGecko
    */
   static async getETHPrice(): Promise<number> {
@@ -51,26 +78,25 @@ export class PriceService {
    */
   static async getPTradoorPrice(): Promise<number> {
     try {
-      // Try to get pTradoor price from CoinGecko
-      // Note: pTradoor might not be listed on CoinGecko yet, so we'll use a fallback
+      // First try CoinGecko contract-based price on Base
+      const cgPrice = await this.getTokenPriceByContract(
+        "base",
+        this.PTRADOOR_TOKEN_ADDRESS
+      );
+      if (cgPrice && cgPrice > 0) return cgPrice;
+
+      // Fallback: derive from ETH price with ratio if direct price unavailable
       const response = await fetch(
         "https://api.coingecko.com/api/v3/simple/price?ids=ethereum&vs_currencies=usd&include_24hr_change=true"
       );
-
       if (response.ok) {
         const data = await response.json();
-        // For now, use a calculated price based on ETH price and a reasonable ratio
-        // This can be updated when pTradoor gets listed on CoinGecko
         const ethPrice = data.ethereum?.usd || 3000;
-        const pTradoorPrice = ethPrice * 0.000015; // Adjust this ratio as needed
-
-        if (isFinite(pTradoorPrice) && pTradoorPrice > 0) {
-          return pTradoorPrice;
-        }
+        const derived = ethPrice * 0.000015;
+        if (isFinite(derived) && derived > 0) return derived;
       }
 
-      // Fallback to a reasonable default price
-      return 0.045;
+      return 0.045; // ultimate fallback
     } catch (error) {
       console.warn(
         "Error fetching pTradoor price from CoinGecko, using fallback:",

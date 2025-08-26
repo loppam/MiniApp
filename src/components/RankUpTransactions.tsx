@@ -619,7 +619,7 @@ export function RankUpTransactions() {
                         {transaction.type.toUpperCase()} pTRADOOR
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        ${transaction.price || 0} •{" "}
+                        {transaction.amount / 1000} K•{" "}
                         {formatTime(transaction.timestamp)}
                       </div>
                     </div>

@@ -266,6 +266,24 @@ export const userService = {
     }
   },
 
+  // Update only ptradoor balances (bypass sanitizer for these server-owned fields)
+  async updatePtradoorBalance(
+    address: string,
+    updates: { ptradoorBalance: number; ptradoorEarned: number }
+  ): Promise<void> {
+    try {
+      const userRef = doc(db, "users", address);
+      await updateDoc(userRef, {
+        ptradoorBalance: updates.ptradoorBalance,
+        ptradoorEarned: updates.ptradoorEarned,
+        updatedAt: serverTimestamp(),
+      });
+    } catch (error) {
+      console.error("Error updating ptradoor balances:", error);
+      throw error;
+    }
+  },
+
   // Allocate initial points based on Base chain activity
   async allocateInitialPoints(address: string): Promise<PointCalculation> {
     try {

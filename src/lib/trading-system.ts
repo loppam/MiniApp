@@ -198,7 +198,7 @@ export class TradingSystem {
         newBalance = Math.max(0, newBalance - amount);
       }
 
-      await userService.upsertUserProfile(userAddress, {
+      await userService.updatePtradoorBalance(userAddress, {
         ptradoorBalance: newBalance,
         ptradoorEarned: earned,
       });
