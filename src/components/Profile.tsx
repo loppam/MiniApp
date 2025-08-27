@@ -17,6 +17,7 @@ import {
 import { useAccount } from "wagmi";
 import { useUserProfile, useAchievements } from "~/hooks/useFirebase";
 import sdk from "@farcaster/miniapp-sdk";
+import { MintNFT } from "./MintNFT";
 
 const getTierColor = (tier: string) => {
   switch (tier) {
@@ -198,7 +199,7 @@ Join me on Base chain's premier trading platform! 🚀
               <div className="flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  {profile.joinDate && 'toDate' in profile.joinDate
+                  {profile.joinDate && "toDate" in profile.joinDate
                     ? formatDate(profile.joinDate.toDate().toISOString())
                     : "Recently joined"}
                 </span>
@@ -240,6 +241,18 @@ Join me on Base chain's premier trading platform! 🚀
       </Card>
 
       <div className="grid grid-cols-2 gap-3">
+        {!profile.hasMinted && (
+          <Card className="bg-card border-border col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="flex items-center gap-1 text-sm">
+                Mint your Tradoor NFT
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <MintNFT />
+            </CardContent>
+          </Card>
+        )}
         <Card className="bg-card border-border">
           <CardHeader className="pb-2">
             <CardTitle className="flex items-center gap-1 text-sm">
