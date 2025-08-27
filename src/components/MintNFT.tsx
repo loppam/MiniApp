@@ -9,7 +9,7 @@ import { Button } from "./ui/Button";
 import { userService } from "~/lib/firebase-services";
 
 const CONTRACT_ADDRESS: `0x${string}` =
-  "0x1F0BF73C9648C57AE1Cf66bb1c2c4BE4209EA2c5";
+  "0xb253aaCD4e6CCb75d6b5833601118b6783254078";
 
 const CONTRACT_ABI = [
   {

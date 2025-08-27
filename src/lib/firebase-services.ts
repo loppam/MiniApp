@@ -944,12 +944,15 @@ export const leaderboardService = {
       } else {
         // Update existing entry with current user data
         const currentEntry = leaderboardDoc.data() as LeaderboardEntry;
-        if (
-          currentEntry.points !== userProfile.totalPoints ||
-          currentEntry.tier !== userProfile.tier
-        ) {
+        const needsUpdate =
+          currentEntry.points !== (userProfile.totalPoints || 0) ||
+          currentEntry.tier !== (userProfile.tier || "Bronze") ||
+          currentEntry.transactions !== (userProfile.totalTransactions || 0) ||
+          currentEntry.ptradoorBalance !== (userProfile.ptradoorBalance || 0);
+
+        if (needsUpdate) {
           console.log(
-            `Updating leaderboard entry for ${address} - points: ${currentEntry.points} → ${userProfile.totalPoints}, tier: ${currentEntry.tier} → ${userProfile.tier}`
+            `Updating leaderboard entry for ${address} - points: ${currentEntry.points} → ${userProfile.totalPoints}, tier: ${currentEntry.tier} → ${userProfile.tier}, txs: ${currentEntry.transactions} → ${userProfile.totalTransactions}, balance: ${currentEntry.ptradoorBalance} → ${userProfile.ptradoorBalance}`
           );
           await this.updateLeaderboardEntry(
             address,
