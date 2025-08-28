@@ -9,7 +9,7 @@ import { Button } from "./ui/Button";
 import { userService } from "~/lib/firebase-services";
 
 const CONTRACT_ADDRESS: `0x${string}` =
-  "0xb253aaCD4e6CCb75d6b5833601118b6783254078";
+  "0x987b700424c07267a81fce8642a5c1d08eb50f35";
 
 const CONTRACT_ABI = [
   {
@@ -49,7 +49,7 @@ export function MintNFT() {
       abi: CONTRACT_ABI,
       functionName: "mint",
       args: [],
-      value: parseEther("0.0001"),
+      value: parseEther("0.00023"),
     });
   };
 
@@ -60,7 +60,7 @@ export function MintNFT() {
         disabled={isPending || isLoading}
         className="w-full"
       >
-        {isLoading ? "Minting..." : "Mint NFT (0.0001 ETH)"}
+        {isLoading ? "Minting..." : "Mint NFT"}
       </Button>
       {writeError && (
         <div className="text-xs text-red-500">
