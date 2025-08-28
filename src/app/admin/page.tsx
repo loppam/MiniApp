@@ -48,6 +48,14 @@ import {
   PlatformStats,
   LeaderboardEntry,
 } from "~/types/firebase";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  writeBatch,
+} from "firebase/firestore";
+import { db } from "~/lib/firebase";
 
 interface AdminAuth {
   username: string;
@@ -98,6 +106,52 @@ export default function AdminPage() {
     pointsReward: 10,
     isActive: true,
   });
+
+  // Add initial fix handler
+  const handleInitialFix = async () => {
+    try {
+      setMessage({ type: "info", text: "Fixing initial flags for users..." });
+
+      // Get all users with initial: false and totalPoints > 0
+      const usersQuery = query(
+        collection(db, "users"),
+        where("initial", "==", false)
+      );
+      const snapshot = await getDocs(usersQuery);
+
+      let fixedCount = 0;
+      const batch = writeBatch(db);
+
+      for (const userDoc of snapshot.docs) {
+        const userData = userDoc.data();
+        if (userData.totalPoints > 0) {
+          batch.update(userDoc.ref, { initial: true });
+          fixedCount++;
+        }
+      }
+
+      if (fixedCount > 0) {
+        await batch.commit();
+        setMessage({
+          type: "success",
+          text: `Fixed initial flags for ${fixedCount} users!`,
+        });
+      } else {
+        setMessage({
+          type: "info",
+          text: "No users found that need initial flag fixes.",
+        });
+      }
+    } catch (error) {
+      console.error("Error fixing initial flags:", error);
+      setMessage({
+        type: "error",
+        text: `Error fixing initial flags: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`,
+      });
+    }
+  };
 
   const [newMilestone, setNewMilestone] = useState({
     name: "",
@@ -1258,6 +1312,13 @@ export default function AdminPage() {
               >
                 Refresh Performance Metrics
               </Button>
+              <Button
+                onClick={handleInitialFix}
+                variant="outline"
+                className="flex-1"
+              >
+                Initial Fix
+              </Button>
             </div>
 
             {/* Performance Metrics Display */}
@@ -1372,6 +1433,14 @@ export default function AdminPage() {
                 >
                   <Users className="h-4 w-4" />
                   Fix Initial Data
+                </Button>
+                <Button
+                  onClick={handleInitialFix}
+                  variant="outline"
+                  className="flex items-center gap-2"
+                >
+                  <Users className="h-4 w-4" />
+                  Initial Fix
                 </Button>
               </div>
             </div>
