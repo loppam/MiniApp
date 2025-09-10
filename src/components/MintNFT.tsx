@@ -27,7 +27,7 @@ export function MintNFT() {
     writeContract,
     data: hash,
     isPending,
-    error: writeError,
+    // error: writeError,
   } = useWriteContract();
   const { isLoading, isSuccess } = useWaitForTransactionReceipt({ hash });
 
@@ -62,11 +62,11 @@ export function MintNFT() {
       >
         {isLoading ? "Minting..." : "Mint NFT"}
       </Button>
-      {writeError && (
+      {/* {writeError && (
         <div className="text-xs text-red-500">
           {String(writeError.message || writeError)}
         </div>
-      )}
+      )} */}
       {isSuccess && hash && (
         <div className="text-xs">
           Successfully minted NFT!{" "}
