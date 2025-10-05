@@ -166,10 +166,9 @@ export function frameConnector() {
   }));
 }
 ```
-
 Next, let's create a provider component that handles our Wagmi configuration. Create `components/providers/WagmiProvider.tsx`.
 
-We'll configure our client with Base as a connected network and use the `frameConnector` that we just created:
+We'll configure our clients with Base as a connected network and use the `frameConnector` that we just created:
 
 ```
 import { createConfig, http, WagmiProvider } from "wagmi";
